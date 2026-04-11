@@ -1,4 +1,19 @@
+import { useEffect } from 'react'
+import { useRelayContext } from '../context/RelayContext'
+
 export default function MarketsPage() {
+  const { subscribe } = useRelayContext()
+
+  useEffect(() => {
+    const unsub = subscribe(
+      'markets-feed',
+      [{ kinds: [30050, 30051, 30052] }],
+      event => console.log('[nostr_dlc]', event),
+      () => console.log('[nostr_dlc] eose — end of stored events'),
+    )
+    return unsub
+  }, [subscribe])
+
   return (
     <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full">
       <h1 className="text-2xl font-bold mb-1">markets</h1>

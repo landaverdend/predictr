@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { useRelay } from '../hooks/useRelay'
+import { useRelayContext } from '../context/RelayContext'
 
 const STATUS_COLOR = {
   connected: 'bg-green-400',
@@ -13,7 +13,7 @@ const links = [
 ]
 
 export default function Navbar() {
-  const { status } = useRelay('ws://localhost:8080')
+  const { status } = useRelayContext()
 
   return (
     <header className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
