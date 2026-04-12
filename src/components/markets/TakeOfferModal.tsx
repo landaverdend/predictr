@@ -4,7 +4,7 @@ import { takerStake } from '../../lib/market'
 import { useRelayContext } from '../../context/RelayContext'
 import { useElectrum } from '../../hooks/useElectrum'
 import type { ElectrumUTXO } from '../../lib/electrum'
-import { db } from '../../db'
+import { sendTakeRequest } from '../../lib/takeOffer'
 
 const FEE_BUFFER = 2000  // sats reserved for taker's fee contribution
 
@@ -66,68 +66,14 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!window.nostr) { setSubmitError('no nostr extension found'); setSubmitStatus('error'); return }
-    if (!window.nostr.nip44) { setSubmitError('nostr extension does not support NIP-44 — upgrade Alby'); setSubmitStatus('error'); return }
-    if (!selectedUtxo) return
-    if (!changeAddress.trim()) { setSubmitError('enter a change address'); setSubmitStatus('error'); return }
+    if (!selectedUtxo || !changeAddress.trim()) return
 
     setSubmitStatus('sending')
     setSubmitError('')
 
     try {
-      const takerPubkey = await window.nostr.getPublicKey()
-      const now = Date.now()
       const input = { txid: selectedUtxo.tx_hash, vout: selectedUtxo.tx_pos, amount: selectedUtxo.value }
-
-      const payload = JSON.stringify({
-        type: 'take_request',
-        taker_pubkey: takerPubkey,
-        input,
-        change_address: changeAddress.trim(),
-      })
-
-      const ciphertext = await window.nostr.nip44.encrypt(offer.makerPubkey, payload)
-
-      const dmSigned = await window.nostr.signEvent({
-        kind: 14,
-        pubkey: takerPubkey,
-        created_at: Math.floor(now / 1000),
-        tags: [['p', offer.makerPubkey], ['e', offer.eventId]],
-        content: ciphertext,
-      })
-      await publish(dmSigned)
-
-      await db.contracts.put({
-        id: offer.eventId,
-        role: 'taker',
-        status: 'awaiting_psbt',
-        side: offer.side === 'YES' ? 'NO' : 'YES',
-        marketId: market.id,
-        marketQuestion: market.question,
-        oraclePubkey: market.pubkey,
-        announcementEventId: market.eventId,
-        yesHash: market.yesHash,
-        noHash: market.noHash,
-        resolutionBlockheight: market.resolutionBlockheight,
-        counterpartyPubkey: offer.makerPubkey,
-        makerStake: offer.makerStake,
-        confidence: offer.confidence,
-        takerStake: impliedTakerStake,
-        takerInput: input,
-        takerChangeAddress: changeAddress.trim(),
-        createdAt: now,
-        updatedAt: now,
-      })
-
-      await db.messages.put({
-        id: dmSigned.id,
-        contractId: offer.eventId,
-        direction: 'out',
-        type: 'take_request',
-        payload,
-        createdAt: now,
-      })
-
+      await sendTakeRequest(publish, market, offer, input, changeAddress.trim())
       setSubmitStatus('done')
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'unknown error')

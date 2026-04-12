@@ -20,12 +20,10 @@ export function useDMs(pubkey: string | null) {
       async event => {
         if (!window.nostr?.nip44) return
 
-        // skip messages we sent ourselves
-        if (event.pubkey === pubkey) return
 
         try {
           const plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)
-          const msg = JSON.parse(plaintext) as { type: string; [k: string]: unknown }
+          const msg = JSON.parse(plaintext) as { type: string;[k: string]: unknown }
 
           const offerEventId = event.tags.find(t => t[0] === 'e')?.[1]
           if (!offerEventId) return

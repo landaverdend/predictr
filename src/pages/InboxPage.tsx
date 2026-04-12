@@ -3,25 +3,25 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Contract, type Message } from '../db'
 
 const STATUS_LABEL: Record<string, string> = {
-  offer_pending:  'open',
-  take_received:  'action needed',
-  psbt_sent:      'psbt sent',
-  awaiting_psbt:  'awaiting psbt',
-  funded:         'funded',
-  resolved:       'resolved',
-  refunded:       'refunded',
-  cancelled:      'cancelled',
+  offer_pending: 'open',
+  take_received: 'action needed',
+  psbt_sent: 'psbt sent',
+  awaiting_psbt: 'awaiting psbt',
+  funded: 'funded',
+  resolved: 'resolved',
+  refunded: 'refunded',
+  cancelled: 'cancelled',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  offer_pending:  'text-white/40 bg-white/5',
-  take_received:  'text-yellow-400 bg-yellow-400/10',
-  psbt_sent:      'text-blue-400 bg-blue-400/10',
-  awaiting_psbt:  'text-yellow-400 bg-yellow-400/10',
-  funded:         'text-green-400 bg-green-400/10',
-  resolved:       'text-green-400 bg-green-400/10',
-  refunded:       'text-white/50 bg-white/5',
-  cancelled:      'text-white/30 bg-white/5',
+  offer_pending: 'text-white/40 bg-white/5',
+  take_received: 'text-yellow-400 bg-yellow-400/10',
+  psbt_sent: 'text-blue-400 bg-blue-400/10',
+  awaiting_psbt: 'text-yellow-400 bg-yellow-400/10',
+  funded: 'text-green-400 bg-green-400/10',
+  resolved: 'text-green-400 bg-green-400/10',
+  refunded: 'text-white/50 bg-white/5',
+  cancelled: 'text-white/30 bg-white/5',
 }
 
 function timeAgo(ts: number) {
@@ -140,9 +140,8 @@ function ContractDetail({ contract, onBack }: { contract: Contract; onBack: () =
           {messages.map((msg: Message) => (
             <div
               key={msg.id}
-              className={`rounded-lg px-4 py-3 text-xs space-y-1 ${
-                msg.direction === 'out' ? 'bg-white/5 border border-white/10' : 'bg-white/3 border border-white/5'
-              }`}
+              className={`rounded-lg px-4 py-3 text-xs space-y-1 ${msg.direction === 'out' ? 'bg-white/5 border border-white/10' : 'bg-white/3 border border-white/5'
+                }`}
             >
               <div className="flex items-center justify-between">
                 <span className="text-white/40">{msg.type}</span>

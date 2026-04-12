@@ -1,0 +1,70 @@
+import type { NostrEvent } from 'nostr-tools'
+import type { Market, Offer } from './market'
+import { takerStake } from './market'
+import type { TakerInput, TakeRequest } from './types'
+import { db } from '../db'
+
+export async function sendTakeRequest(
+  publish: (event: NostrEvent) => Promise<void>,
+  market: Market,
+  offer: Offer,
+  input: TakerInput,
+  changeAddress: string,
+): Promise<void> {
+  if (!window.nostr) throw new Error('no nostr extension found')
+  if (!window.nostr.nip44) throw new Error('nostr extension does not support NIP-44 — upgrade Alby')
+
+  const takerPubkey = await window.nostr.getPublicKey()
+  const now = Date.now()
+  const impliedTakerStake = takerStake(offer)
+
+  const takeRequest: TakeRequest = {
+    type: 'take_request',
+    taker_pubkey: takerPubkey,
+    input,
+    change_address: changeAddress,
+  }
+  const payload = JSON.stringify(takeRequest)
+
+  const ciphertext = await window.nostr.nip44.encrypt(offer.makerPubkey, payload)
+
+  const dmSigned = await window.nostr.signEvent({
+    kind: 14,
+    pubkey: takerPubkey,
+    created_at: Math.floor(now / 1000),
+    tags: [['p', offer.makerPubkey], ['e', offer.eventId]],
+    content: ciphertext,
+  })
+  await publish(dmSigned)
+
+  await db.contracts.put({
+    id: offer.eventId,
+    role: 'taker',
+    status: 'awaiting_psbt',
+    side: offer.side === 'YES' ? 'NO' : 'YES',
+    marketId: market.id,
+    marketQuestion: market.question,
+    oraclePubkey: market.pubkey,
+    announcementEventId: market.eventId,
+    yesHash: market.yesHash,
+    noHash: market.noHash,
+    resolutionBlockheight: market.resolutionBlockheight,
+    counterpartyPubkey: offer.makerPubkey,
+    makerStake: offer.makerStake,
+    confidence: offer.confidence,
+    takerStake: impliedTakerStake,
+    takerInput: input,
+    takerChangeAddress: changeAddress,
+    createdAt: now,
+    updatedAt: now,
+  })
+
+  await db.messages.put({
+    id: dmSigned.id,
+    contractId: offer.eventId,
+    direction: 'out',
+    type: 'take_request',
+    payload,
+    createdAt: now,
+  })
+}
