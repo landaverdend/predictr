@@ -19,6 +19,7 @@ export default function OraclePage() {
   const [question, setQuestion] = useState('')
   const [description, setDescription] = useState('')
   const [resolutionBlockheight, setResolutionBlockheight] = useState('')
+  const [imageUri, setImageUri] = useState('')
   const [relays, setRelays] = useState<string[]>(['ws://localhost:8080'])
   const [relayInput, setRelayInput] = useState('')
   const [status, setStatus] = useState<'idle' | 'publishing' | 'done' | 'error'>('idle')
@@ -48,9 +49,9 @@ export default function OraclePage() {
 
     try {
       const yesPreimage = randomHex(32)
-      const noPreimage  = randomHex(32)
+      const noPreimage = randomHex(32)
       const yesHash = await sha256hex(yesPreimage)
-      const noHash  = await sha256hex(noPreimage)
+      const noHash = await sha256hex(noPreimage)
       const marketId = randomHex(16)
 
       const pubkey = await window.nostr.getPublicKey()
@@ -66,6 +67,7 @@ export default function OraclePage() {
           ['yes_hash', yesHash],
           ['no_hash', noHash],
           ['resolution_blockheight', resolutionBlockheight],
+          ...(imageUri ? [['image', imageUri]] : []),
           ...relays.map(r => ['r', r]),
         ],
         content: description,
@@ -126,6 +128,27 @@ export default function OraclePage() {
               rows={3}
               className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors resize-none"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs text-white/50 uppercase tracking-wider">
+              image <span className="normal-case text-white/30">(optional)</span>
+            </label>
+            <input
+              type="url"
+              placeholder="https://example.com/image.jpg"
+              value={imageUri}
+              onChange={e => setImageUri(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
+            />
+            {imageUri && (
+              <img
+                src={imageUri}
+                alt="preview"
+                onError={e => (e.currentTarget.style.display = 'none')}
+                className="mt-2 w-full h-36 object-cover rounded-lg border border-white/10"
+              />
+            )}
           </div>
 
           <div className="space-y-1.5">
