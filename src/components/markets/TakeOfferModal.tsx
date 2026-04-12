@@ -18,7 +18,8 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
   const { publish } = useRelayContext()
   const { client, ready: electrumReady } = useElectrum()
 
-  const [address, setAddress] = useState('')
+  const [fundingAddress, setFundingAddress] = useState('')
+  const [changeAddress, setChangeAddress] = useState('')
   const [utxoStatus, setUtxoStatus] = useState<'idle' | 'loading' | 'found' | 'error'>('idle')
   const [utxoError, setUtxoError] = useState('')
   const [selectedUtxo, setSelectedUtxo] = useState<ElectrumUTXO | null>(null)
@@ -29,8 +30,8 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const impliedTakerStake = takerStake(offer)
 
-  function handleAddressChange(value: string) {
-    setAddress(value)
+  function handleFundingAddressChange(value: string) {
+    setFundingAddress(value)
     setSelectedUtxo(null)
     setUtxoStatus('idle')
     setUtxoError('')
@@ -68,6 +69,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
     if (!window.nostr) { setSubmitError('no nostr extension found'); setSubmitStatus('error'); return }
     if (!window.nostr.nip44) { setSubmitError('nostr extension does not support NIP-44 — upgrade Alby'); setSubmitStatus('error'); return }
     if (!selectedUtxo) return
+    if (!changeAddress.trim()) { setSubmitError('enter a change address'); setSubmitStatus('error'); return }
 
     setSubmitStatus('sending')
     setSubmitError('')
@@ -81,7 +83,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
         type: 'take_request',
         taker_pubkey: takerPubkey,
         input,
-        change_address: address.trim(),
+        change_address: changeAddress.trim(),
       })
 
       const ciphertext = await window.nostr.nip44.encrypt(offer.makerPubkey, payload)
@@ -112,7 +114,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
         confidence: offer.confidence,
         takerStake: impliedTakerStake,
         takerInput: input,
-        takerChangeAddress: address.trim(),
+        takerChangeAddress: changeAddress.trim(),
         createdAt: now,
         updatedAt: now,
       })
@@ -165,14 +167,25 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
 
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-white/40">your bitcoin address</label>
+            <label className="text-xs text-white/40">funding address</label>
             {!electrumReady && <span className="text-[10px] text-yellow-400/70">electrum connecting…</span>}
           </div>
           <input
             type="text"
             placeholder="bcrt1q..."
-            value={address}
-            onChange={e => handleAddressChange(e.target.value)}
+            value={fundingAddress}
+            onChange={e => handleFundingAddressChange(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-xs font-mono placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs text-white/40">change address</label>
+          <input
+            type="text"
+            placeholder="bcrt1q..."
+            value={changeAddress}
+            onChange={e => setChangeAddress(e.target.value)}
             className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-xs font-mono placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
           />
         </div>
@@ -211,7 +224,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
           </button>
           <button
             type="submit"
-            disabled={utxoStatus !== 'found' || submitStatus === 'sending' || submitStatus === 'done'}
+            disabled={utxoStatus !== 'found' || !changeAddress.trim() || submitStatus === 'sending' || submitStatus === 'done'}
             className="flex-1 py-3 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
           >
             {submitStatus === 'sending' ? 'sending...' : 'send request'}
