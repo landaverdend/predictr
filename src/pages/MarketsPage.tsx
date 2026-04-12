@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { NostrEvent } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
+import { db } from '../db'
 
 type Market = {
   id: string
@@ -9,13 +10,16 @@ type Market = {
   question: string
   description: string
   resolutionBlockheight: number
+  yesHash: string
+  noHash: string
   imageUrl?: string
   relays: string[]
   offerCount: number
 }
 
 type Offer = {
-  id: string
+  id: string        // d-tag
+  eventId: string   // nostr event id — used for e-tag in DMs
   makerPubkey: string
   side: 'YES' | 'NO'
   makerStake: number
@@ -40,6 +44,8 @@ function parseMarket(event: NostrEvent): Market {
     question: tag(event, 'question'),
     description: event.content,
     resolutionBlockheight: parseInt(tag(event, 'resolution_blockheight'), 10),
+    yesHash: tag(event, 'yes_hash'),
+    noHash: tag(event, 'no_hash'),
     imageUrl: imageUri || undefined,
     relays: event.tags.filter(t => t[0] === 'r').map(t => t[1]),
     offerCount: 0,
@@ -55,6 +61,7 @@ function randomHex(bytes: number) {
 function parseOffer(event: NostrEvent): Offer {
   return {
     id: tag(event, 'd'),
+    eventId: event.id,
     makerPubkey: event.pubkey,
     side: tag(event, 'side') as 'YES' | 'NO',
     makerStake: parseInt(tag(event, 'maker_stake'), 10),
@@ -165,6 +172,27 @@ function PlaceBetForm({ market, onDone }: { market: Market; onDone: () => void }
 
       const signed = await window.nostr.signEvent(unsigned)
       await publish(signed)
+
+      await db.contracts.put({
+        id: signed.id,
+        role: 'maker',
+        status: 'offer_pending',
+        side,
+        marketId: market.id,
+        marketQuestion: market.question,
+        oraclePubkey: market.pubkey,
+        announcementEventId: market.eventId,
+        yesHash: market.yesHash,
+        noHash: market.noHash,
+        resolutionBlockheight: market.resolutionBlockheight,
+        counterpartyPubkey: '',
+        makerStake: makerStakeNum,
+        confidence: confidenceNum,
+        takerStake: impliedTakerStake,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      })
+
       setStatus('done')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'unknown error')
@@ -271,8 +299,192 @@ function PlaceBetForm({ market, onDone }: { market: Market; onDone: () => void }
   )
 }
 
+function TakeOfferModal({ market, offer, onDone }: { market: Market; offer: Offer; onDone: () => void }) {
+  const { publish } = useRelayContext()
+  const [txid, setTxid] = useState('')
+  const [vout, setVout] = useState('0')
+  const [amount, setAmount] = useState('')
+  const [changeAddress, setChangeAddress] = useState('')
+  const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
+  const [error, setError] = useState('')
+
+  const impliedTakerStake = takerStake(offer)
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!window.nostr) { setError('no nostr extension found'); setStatus('error'); return }
+    if (!window.nostr.nip44) { setError('nostr extension does not support NIP-44 — upgrade Alby'); setStatus('error'); return }
+
+    setStatus('sending')
+    setError('')
+
+    try {
+      const takerPubkey = await window.nostr.getPublicKey()
+      const now = Date.now()
+
+      const payload = JSON.stringify({
+        type: 'take_request',
+        taker_pubkey: takerPubkey,
+        input: { txid, vout: parseInt(vout, 10), amount: parseInt(amount, 10) },
+        change_address: changeAddress,
+      })
+
+      const ciphertext = await window.nostr.nip44.encrypt(offer.makerPubkey, payload)
+
+      const dmUnsigned = {
+        kind: 14,
+        pubkey: takerPubkey,
+        created_at: Math.floor(now / 1000),
+        tags: [
+          ['p', offer.makerPubkey],
+          ['e', offer.eventId],
+        ],
+        content: ciphertext,
+      }
+
+      const dmSigned = await window.nostr.signEvent(dmUnsigned)
+      await publish(dmSigned)
+
+      await db.contracts.put({
+        id: offer.eventId,
+        role: 'taker',
+        status: 'awaiting_psbt',
+        side: offer.side === 'YES' ? 'NO' : 'YES',  // taker gets opposite side
+        marketId: market.id,
+        marketQuestion: market.question,
+        oraclePubkey: market.pubkey,
+        announcementEventId: market.eventId,
+        yesHash: market.yesHash,
+        noHash: market.noHash,
+        resolutionBlockheight: market.resolutionBlockheight,
+        counterpartyPubkey: offer.makerPubkey,
+        makerStake: offer.makerStake,
+        confidence: offer.confidence,
+        takerStake: impliedTakerStake,
+        takerInput: { txid, vout: parseInt(vout, 10), amount: parseInt(amount, 10) },
+        takerChangeAddress: changeAddress,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      await db.messages.put({
+        id: dmSigned.id,
+        contractId: offer.eventId,
+        direction: 'out',
+        type: 'take_request',
+        payload,
+        createdAt: now,
+      })
+
+      setStatus('done')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'unknown error')
+      setStatus('error')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onDone}>
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <form
+        onSubmit={handleSubmit}
+        onClick={e => e.stopPropagation()}
+        className="relative w-full max-w-sm bg-zinc-900 border border-white/10 rounded-xl p-6 space-y-4"
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">take offer</p>
+          <button type="button" onClick={onDone} className="text-white/30 hover:text-white/60 transition-colors text-xl leading-none">×</button>
+        </div>
+
+        <div className="bg-white/5 rounded-lg px-4 py-3 space-y-1 text-xs">
+          <div className="flex justify-between">
+            <span className="text-white/40">you take side</span>
+            <span className={`font-medium ${offer.side === 'YES' ? 'text-red-400' : 'text-green-400'}`}>
+              {offer.side === 'YES' ? 'NO' : 'YES'}
+            </span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/40">your stake</span>
+            <span className="font-mono text-white/70">{impliedTakerStake.toLocaleString()} sats</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-white/40">you win</span>
+            <span className="font-mono text-white/70">{(offer.makerStake + impliedTakerStake).toLocaleString()} sats</span>
+          </div>
+        </div>
+
+        <p className="text-xs text-white/30 -mt-1">provide the UTXO you'll fund your side with</p>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-white/40">txid</label>
+          <input
+            type="text"
+            placeholder="abc123..."
+            value={txid}
+            onChange={e => setTxid(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
+          />
+        </div>
+
+        <div className="flex gap-2">
+          <div className="space-y-1.5 w-20">
+            <label className="text-xs text-white/40">vout</label>
+            <input
+              type="number"
+              min="0"
+              value={vout}
+              onChange={e => setVout(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-white/30 transition-colors"
+            />
+          </div>
+          <div className="space-y-1.5 flex-1">
+            <label className="text-xs text-white/40">amount (sats)</label>
+            <input
+              type="number"
+              min={impliedTakerStake}
+              placeholder={String(impliedTakerStake)}
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
+            />
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs text-white/40">change address</label>
+          <input
+            type="text"
+            placeholder="bc1p..."
+            value={changeAddress}
+            onChange={e => setChangeAddress(e.target.value)}
+            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-xs font-mono placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
+          />
+        </div>
+
+        {status === 'error' && <p className="text-xs text-red-400">{error}</p>}
+        {status === 'done' && <p className="text-xs text-green-400">take request sent — waiting for maker to respond</p>}
+
+        <div className="flex gap-2 pt-1">
+          <button type="button" onClick={onDone}
+            className="flex-1 py-2.5 rounded-lg text-sm border border-white/10 text-white/40 hover:bg-white/5 transition-colors">
+            cancel
+          </button>
+          <button
+            type="submit"
+            disabled={!txid || !amount || !changeAddress || status === 'sending' || status === 'done'}
+            className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+          >
+            {status === 'sending' ? 'sending...' : 'send request'}
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 function MarketDetail({ market, offers, onBack }: { market: Market; offers: Offer[]; onBack: () => void }) {
   const [placing, setPlacing] = useState(false)
+  const [taking, setTaking] = useState<Offer | null>(null)
 
   return (
     <div className="space-y-6">
@@ -315,6 +527,7 @@ function MarketDetail({ market, offers, onBack }: { market: Market; offers: Offe
         </div>
 
         {placing && <PlaceBetForm market={market} onDone={() => setPlacing(false)} />}
+        {taking && <TakeOfferModal market={market} offer={taking} onDone={() => setTaking(null)} />}
 
         {offers.length === 0 ? (
           <div className="border border-white/10 rounded-lg p-8 text-center text-white/30 text-sm">
@@ -338,7 +551,10 @@ function MarketDetail({ market, offers, onBack }: { market: Market; offers: Offe
                 <div className="flex items-center gap-4 text-xs text-white/30">
                   <span className="font-mono">{truncate(offer.makerPubkey)}</span>
                   <span>{timeAgo(offer.createdAt)}</span>
-                  <button className="border border-white/20 rounded px-2.5 py-1 hover:bg-white/5 transition-colors text-white/60">
+                  <button
+                    onClick={() => setTaking(offer)}
+                    className="border border-white/20 rounded px-2.5 py-1 hover:bg-white/5 transition-colors text-white/60"
+                  >
                     take
                   </button>
                 </div>

@@ -10,6 +10,7 @@ const STATUS_COLOR = {
 const links = [
   { to: '/', label: 'markets' },
   { to: '/oracle', label: 'oracle' },
+  { to: '/inbox', label: 'inbox' },
 ]
 
 export default function Navbar() {
