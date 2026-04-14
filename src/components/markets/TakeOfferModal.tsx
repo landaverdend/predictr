@@ -16,7 +16,7 @@ function pickUtxo(utxos: ElectrumUTXO[], required: number): ElectrumUTXO | null 
 
 export function TakeOfferModal({ market, offer, onDone }: { market: Market; offer: Offer; onDone: () => void }) {
   const { publish } = useRelayContext()
-  const { client, ready: electrumReady } = useElectrum()
+  const { clientRef, ready: electrumReady } = useElectrum()
 
   const [fundingAddress, setFundingAddress] = useState('')
   const [changeAddress, setChangeAddress] = useState('')
@@ -40,6 +40,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
     if (!value.trim()) return
 
     debounceRef.current = setTimeout(async () => {
+      const client = clientRef.current
       if (!client) { setUtxoError('electrum not connected'); setUtxoStatus('error'); return }
       setUtxoStatus('loading')
       try {

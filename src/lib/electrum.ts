@@ -55,7 +55,7 @@ export class ElectrumWS {
   private pending = new Map<number, Pending>()
   private id = 1
 
-  constructor(private url: string) {}
+  constructor(private url: string) { }
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {

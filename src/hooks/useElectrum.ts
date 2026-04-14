@@ -23,5 +23,5 @@ export function useElectrum() {
     }
   }, [])
 
-  return { client: clientRef.current, ready, error }
+  return { clientRef, client: clientRef.current, ready, error }
 }
