@@ -19,7 +19,7 @@
     "ws": "^8.20.0"
   },
   "dependencies": {
-    "@cmdcode/tapscript": "^1.5.3",
+    "@scure/btc-signer": "^2.0.1",
     "dexie": "^4.4.2",
     "dexie-react-hooks": "^4.4.0",
     "nostr-tools": "^2.23.3",

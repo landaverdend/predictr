@@ -33,7 +33,6 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   const ourSide = contract.role === 'maker' ? contract.side : takerSide
   const ourStake = contract.role === 'maker' ? contract.makerStake : contract.takerStake
 
-  console.log('contract: ', JSON.stringify(contract, null, 2))
   return (
     <>
       <div className="space-y-5">
