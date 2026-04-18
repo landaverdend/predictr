@@ -35,10 +35,14 @@ export function useRelay(url: string) {
 
       if (type === 'EVENT') {
         const [, subId, event] = msg
+        console.log('[relay] EVENT sub=%s kind=%d id=%s', subId, event.kind, event.id)
         subs.current.get(subId)?.onEvent(event)
       } else if (type === 'EOSE') {
         const [, subId] = msg
+        console.log('[relay] EOSE sub=%s', subId)
         subs.current.get(subId)?.onEose?.()
+      } else if (type === 'NOTICE') {
+        console.log('[relay] NOTICE', msg[1])
       }
     }
 
@@ -61,6 +65,7 @@ export function useRelay(url: string) {
 
   const subscribe = useCallback((id: string, filters: Filter[], onEvent: (e: NostrEvent) => void, onEose?: () => void) => {
     subs.current.set(id, { filters, onEvent, onEose })
+    console.log('[relay] subscribing', id, JSON.stringify(filters))
     if (ws.current?.readyState === WebSocket.OPEN) {
       ws.current.send(JSON.stringify(['REQ', id, ...filters]))
     }

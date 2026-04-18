@@ -1,22 +1,28 @@
 import type { NostrEvent } from 'nostr-tools'
-import { Address, OutScript } from '@scure/btc-signer'
+import { SigHash } from '@scure/btc-signer'
 import type { Contract } from '../db'
-import { buildFundingPsbt, REGTEST } from './contract'
-import type { ElectrumUTXO } from './electrum'
+import { buildFundingTx } from './contract'
+import type { WalletUTXO } from '../hooks/useWallet'
 import { db } from '../db'
+
+function hexToBytes(hex: string): Uint8Array {
+  const arr = new Uint8Array(hex.length / 2)
+  for (let i = 0; i < hex.length; i += 2)
+    arr[i / 2] = parseInt(hex.slice(i, i + 2), 16)
+  return arr
+}
 
 export async function sendFundingPsbt(
   publish: (event: NostrEvent) => Promise<void>,
   contract: Contract,
-  maker: { utxo: ElectrumUTXO; fundingAddress: string; changeAddress: string },
+  maker: { funding: WalletUTXO; changeAddress: string },
 ): Promise<void> {
   if (!window.nostr?.nip44) throw new Error('nostr extension with NIP-44 required')
   if (!contract.takerInput || !contract.takerChangeAddress) throw new Error('missing taker input data')
 
   const makerPubkey = await window.nostr.getPublicKey()
-  const script = OutScript.encode(Address(REGTEST).decode(maker.fundingAddress))
 
-  const psbt = buildFundingPsbt(
+  const tx = buildFundingTx(
     {
       yesHash: contract.yesHash,
       noHash: contract.noHash,
@@ -25,7 +31,7 @@ export async function sendFundingPsbt(
       resolutionBlockheight: contract.resolutionBlockheight,
     },
     {
-      utxo: { txid: maker.utxo.tx_hash, vout: maker.utxo.tx_pos, amount: maker.utxo.value, script },
+      utxo: { txid: maker.funding.utxo.tx_hash, vout: maker.funding.utxo.tx_pos, amount: maker.funding.utxo.value, script: maker.funding.script, pubkey: hexToBytes(maker.funding.key.pubkey) },
       stake: contract.makerStake,
       changeAddress: maker.changeAddress,
     },
@@ -35,6 +41,9 @@ export async function sendFundingPsbt(
       changeAddress: contract.takerChangeAddress,
     },
   )
+
+  tx.signIdx(hexToBytes(maker.funding.key.privkey), 0, [SigHash.ALL_ANYONECANPAY])
+  const psbt = btoa(String.fromCharCode(...tx.toPSBT()))
 
   const payload = JSON.stringify({ type: 'psbt_offer', funding_psbt: psbt })
   const ciphertext = await window.nostr.nip44.encrypt(contract.counterpartyPubkey, payload)
@@ -49,7 +58,6 @@ export async function sendFundingPsbt(
   } as NostrEvent)
 
   await publish(signed)
-
 
   await Promise.all([
     db.contracts.update(contract.id, { status: 'psbt_sent', fundingPsbt: psbt, updatedAt: now }),

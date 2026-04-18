@@ -1,4 +1,4 @@
-import { Script, p2tr, TAPROOT_UNSPENDABLE_KEY, Transaction } from '@scure/btc-signer'
+import { Script, p2tr, TAPROOT_UNSPENDABLE_KEY, Transaction, SigHash } from '@scure/btc-signer'
 
 type Network = { bech32: string; pubKeyHash: number; scriptHash: number; wif: number }
 
@@ -42,17 +42,23 @@ function buildContractOutputScripts(p: ContractParams, network: Network = REGTES
 
 const FEE = 1000 // sats per party
 
-export function buildFundingPsbt(
+export function buildFundingTx(
   contract: ContractParams,
-  maker: { utxo: { txid: string; vout: number; amount: number; script: Uint8Array }; stake: number; changeAddress: string },
+  maker: { utxo: { txid: string; vout: number; amount: number; script: Uint8Array; pubkey: Uint8Array }; stake: number; changeAddress: string },
   taker: { input: { txid: string; vout: number; amount: number }; stake: number; changeAddress: string },
   network: Network = REGTEST,
-): string {
+): Transaction {
+  const tx = new Transaction({ allowUnknownOutputs: true })
 
-  const tx = new Transaction()
-
-  tx.addInput({ txid: maker.utxo.txid, index: maker.utxo.vout, witnessUtxo: { script: maker.utxo.script, amount: BigInt(maker.utxo.amount) } })
-  tx.addInput({ txid: taker.input.txid, index: taker.input.vout }) // taker fills in witnessUtxo when signing
+  tx.addInput({ txid: maker.utxo.txid, index: maker.utxo.vout, witnessUtxo: { script: maker.utxo.script, amount: BigInt(maker.utxo.amount) }, tapInternalKey: maker.utxo.pubkey, sighashType: SigHash.ALL_ANYONECANPAY })
+  // placeholder witnessUtxo — taker must replace script with their real scriptPubKey before signing.
+  // the dummy script doesn't affect the maker's ANYONECANPAY signature since only the maker's
+  // own input is committed to. the library requires witnessUtxo on all inputs before signing any.
+  // placeholder — taker replaces with their real scriptPubKey before signing.
+  // ANYONECANPAY means the maker's sig doesn't commit to this; library just needs
+  // witnessUtxo present on all inputs before it will sign any of them.
+  const dummyScript = new Uint8Array([0x51, 0x20, ...TAPROOT_UNSPENDABLE_KEY])
+  tx.addInput({ txid: taker.input.txid, index: taker.input.vout, witnessUtxo: { script: dummyScript, amount: BigInt(taker.input.amount) } })
 
   const { makerOutput, takerOutput } = buildContractOutputScripts(contract, network)
 
@@ -65,6 +71,5 @@ export function buildFundingPsbt(
   const takerChange = taker.input.amount - taker.stake - FEE
   if (takerChange > 0) tx.addOutputAddress(taker.changeAddress, BigInt(takerChange), network)
 
-  const psbt = tx.toPSBT()
-  return btoa(String.fromCharCode(...psbt))
+  return tx
 }

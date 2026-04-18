@@ -42,6 +42,7 @@ export interface Contract {
   makerInput?: { txid: string; vout: number; amount: number }
   takerInput?: { txid: string; vout: number; amount: number }
   takerChangeAddress?: string
+  takerWalletKeyId?: string    // wallet key used for taker's funding input
 
   // contract lifecycle
   fundingPsbt?: string            // base64

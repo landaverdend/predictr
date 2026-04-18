@@ -10,7 +10,7 @@ const STATUS_COLOR = {
 const links = [
   { to: '/', label: 'markets' },
   { to: '/oracle', label: 'oracle' },
-  { to: '/inbox', label: 'inbox' },
+  { to: '/contracts', label: 'contracts' },
   { to: '/wallet', label: 'wallet' },
 ]
 

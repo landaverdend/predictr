@@ -10,6 +10,7 @@ export async function sendTakeRequest(
   offer: Offer,
   input: TakerInput,
   changeAddress: string,
+  walletKeyId: string,
 ): Promise<void> {
   if (!window.nostr) throw new Error('no nostr extension found')
   if (!window.nostr.nip44) throw new Error('nostr extension does not support NIP-44 — upgrade Alby')
@@ -55,6 +56,7 @@ export async function sendTakeRequest(
     takerStake: impliedTakerStake,
     takerInput: input,
     takerChangeAddress: changeAddress,
+    takerWalletKeyId: walletKeyId,
     createdAt: now,
     updatedAt: now,
   })

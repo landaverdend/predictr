@@ -1,80 +1,33 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import type { Market, Offer } from '../../lib/market'
 import { takerStake } from '../../lib/market'
 import { useRelayContext } from '../../context/RelayContext'
-import { useElectrum } from '../../hooks/useElectrum'
-import type { ElectrumUTXO } from '../../lib/electrum'
+import { useWallet, type WalletUTXO } from '../../hooks/useWallet'
+import { ChangeAddressPicker } from '../inbox/ChangeAddressPicker'
 import { sendTakeRequest } from '../../lib/takeOffer'
-
-const FEE_BUFFER = 2000  // sats reserved for taker's fee contribution
-
-function pickUtxo(utxos: ElectrumUTXO[], required: number): ElectrumUTXO | null {
-  const enough = utxos.filter(u => u.value >= required + FEE_BUFFER)
-  if (enough.length === 0) return null
-  return enough.reduce((a, b) => a.value <= b.value ? a : b)
-}
 
 export function TakeOfferModal({ market, offer, onDone }: { market: Market; offer: Offer; onDone: () => void }) {
   const { publish } = useRelayContext()
-  const { clientRef, ready: electrumReady } = useElectrum()
+  const { allUtxos, keys, utxosByAddress, loading } = useWallet()
 
-  const [fundingAddress, setFundingAddress] = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [changeAddress, setChangeAddress] = useState('')
-  const [utxoStatus, setUtxoStatus] = useState<'idle' | 'loading' | 'found' | 'error'>('idle')
-  const [utxoError, setUtxoError] = useState('')
-  const [selectedUtxo, setSelectedUtxo] = useState<ElectrumUTXO | null>(null)
-
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
   const [submitError, setSubmitError] = useState('')
 
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const impliedTakerStake = takerStake(offer)
-
-  function handleFundingAddressChange(value: string) {
-    setFundingAddress(value)
-    setSelectedUtxo(null)
-    setUtxoStatus('idle')
-    setUtxoError('')
-
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (!value.trim()) return
-
-    debounceRef.current = setTimeout(async () => {
-      const client = clientRef.current
-      if (!client) { setUtxoError('electrum not connected'); setUtxoStatus('error'); return }
-      setUtxoStatus('loading')
-      try {
-        const utxos = await client.getUTXOs(value.trim())
-        const best = pickUtxo(utxos, impliedTakerStake)
-        if (!best) {
-          const total = utxos.reduce((s, u) => s + u.value, 0)
-          setUtxoError(
-            utxos.length === 0
-              ? 'no UTXOs found at this address'
-              : `largest UTXO (${Math.max(...utxos.map(u => u.value)).toLocaleString()} sats) is less than required ${(impliedTakerStake + FEE_BUFFER).toLocaleString()} sats — total balance: ${total.toLocaleString()} sats`
-          )
-          setUtxoStatus('error')
-        } else {
-          setSelectedUtxo(best)
-          setUtxoStatus('found')
-        }
-      } catch (e) {
-        setUtxoError(e instanceof Error ? e.message : 'lookup failed')
-        setUtxoStatus('error')
-      }
-    }, 600)
-  }
+  const eligible = allUtxos().filter(w => w.utxo.value >= impliedTakerStake + 2000)
+  const selected: WalletUTXO | null = eligible.find(w => `${w.utxo.tx_hash}:${w.utxo.tx_pos}` === selectedId) ?? null
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedUtxo || !changeAddress.trim()) return
+    if (!selected || !changeAddress.trim()) return
 
     setSubmitStatus('sending')
     setSubmitError('')
-
     try {
-      const input = { txid: selectedUtxo.tx_hash, vout: selectedUtxo.tx_pos, amount: selectedUtxo.value }
-      await sendTakeRequest(publish, market, offer, input, changeAddress.trim())
+      const input = { txid: selected.utxo.tx_hash, vout: selected.utxo.tx_pos, amount: selected.utxo.value }
+      await sendTakeRequest(publish, market, offer, input, changeAddress.trim(), selected.key.id)
       setSubmitStatus('done')
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'unknown error')
@@ -108,58 +61,46 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
           </div>
           <div className="flex justify-between">
             <span className="text-white/40">you win</span>
-            <span className="font-mono text-white/70">{(offer.makerStake + impliedTakerStake).toLocaleString()} sats</span>
+            <span className="font-mono text-green-400">{(offer.makerStake + impliedTakerStake).toLocaleString()} sats</span>
           </div>
         </div>
 
         <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <label className="text-xs text-white/40">funding address</label>
-            {!electrumReady && <span className="text-[10px] text-yellow-400/70">electrum connecting…</span>}
-          </div>
-          <input
-            type="text"
-            placeholder="bcrt1q..."
-            value={fundingAddress}
-            onChange={e => handleFundingAddressChange(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-xs font-mono placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
-          />
+          <p className="text-xs text-white/40">select UTXO</p>
+          {loading && <p className="text-xs text-white/30">loading wallet…</p>}
+          {!loading && keys.length === 0 && (
+            <p className="text-xs text-red-400">no wallet keys — generate one in the wallet tab</p>
+          )}
+          {!loading && keys.length > 0 && eligible.length === 0 && (
+            <p className="text-xs text-red-400">no UTXOs with enough balance — need at least {(impliedTakerStake + 2000).toLocaleString()} sats</p>
+          )}
+          {eligible.map(w => {
+            const id = `${w.utxo.tx_hash}:${w.utxo.tx_pos}`
+            const active = selectedId === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSelectedId(id)}
+                className={`w-full text-left rounded-lg border px-4 py-3 text-xs font-mono transition-colors ${active ? 'border-white/40 bg-white/5' : 'border-white/10 hover:border-white/20'}`}
+              >
+                <div className="flex justify-between">
+                  <span className="text-white/40">{w.utxo.tx_hash.slice(0, 10)}…:{w.utxo.tx_pos}</span>
+                  <span className="text-white/70">{w.utxo.value.toLocaleString()} sats</span>
+                </div>
+                <div className="text-white/30 mt-0.5">{w.key.address.slice(0, 20)}…</div>
+              </button>
+            )
+          })}
         </div>
 
-        <div className="space-y-2">
-          <label className="text-xs text-white/40">change address</label>
-          <input
-            type="text"
-            placeholder="bcrt1q..."
-            value={changeAddress}
-            onChange={e => setChangeAddress(e.target.value)}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-3 text-xs font-mono placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
-          />
-        </div>
-
-        {utxoStatus === 'loading' && (
-          <p className="text-xs text-white/30">looking up UTXOs…</p>
-        )}
-        {utxoStatus === 'error' && (
-          <p className="text-xs text-red-400">{utxoError}</p>
-        )}
-        {utxoStatus === 'found' && selectedUtxo && (
-          <div className="bg-white/5 rounded-lg px-4 py-4 space-y-2 text-xs">
-            <p className="text-white/30 mb-2">UTXO selected</p>
-            <div className="flex justify-between">
-              <span className="text-white/40">txid</span>
-              <span className="font-mono text-white/60">{selectedUtxo.tx_hash.slice(0, 10)}…{selectedUtxo.tx_hash.slice(-6)}:{selectedUtxo.tx_pos}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/40">amount</span>
-              <span className="font-mono text-white/70">{selectedUtxo.value.toLocaleString()} sats</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/40">change back</span>
-              <span className="font-mono text-white/70">~{(selectedUtxo.value - impliedTakerStake - FEE_BUFFER).toLocaleString()} sats</span>
-            </div>
-          </div>
-        )}
+        <ChangeAddressPicker
+          value={changeAddress}
+          onChange={setChangeAddress}
+          keys={keys}
+          utxosByAddress={utxosByAddress}
+          highlightAddress={selected?.key.address}
+        />
 
         {submitStatus === 'error' && <p className="text-xs text-red-400">{submitError}</p>}
         {submitStatus === 'done' && <p className="text-xs text-green-400">take request sent — waiting for maker to respond</p>}
@@ -171,7 +112,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
           </button>
           <button
             type="submit"
-            disabled={utxoStatus !== 'found' || !changeAddress.trim() || submitStatus === 'sending' || submitStatus === 'done'}
+            disabled={!selected || !changeAddress.trim() || submitStatus === 'sending' || submitStatus === 'done'}
             className="flex-1 py-3 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
           >
             {submitStatus === 'sending' ? 'sending...' : 'send request'}

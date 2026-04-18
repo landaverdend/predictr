@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Contract } from '../db'
 import { ContractDetail } from '../components/inbox/ContractDetail'
+import { useDMs } from '../hooks/useDMs'
 
 const STATUS_LABEL: Record<string, string> = {
   offer_pending: 'open',
   take_received: 'action needed',
   psbt_sent: 'psbt sent',
-  awaiting_psbt: 'awaiting psbt',
+  awaiting_psbt: 'pending maker response',
   funded: 'funded',
   resolved: 'resolved',
   refunded: 'refunded',
@@ -61,13 +62,17 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
 }
 
 export default function InboxPage() {
+  useDMs()
+
   const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? []
-  const [selected, setSelected] = useState<Contract | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null
 
   if (selected) {
     return (
       <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full">
-        <ContractDetail contract={selected} onBack={() => setSelected(null)} />
+        <ContractDetail contract={selected} onBack={() => setSelectedId(null)} />
       </main>
     )
   }
@@ -75,7 +80,7 @@ export default function InboxPage() {
   return (
     <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold mb-1">inbox</h1>
+        <h1 className="text-2xl font-bold mb-1">contracts</h1>
         <p className="text-white/40 text-sm">your active and pending contracts</p>
       </div>
 
@@ -86,7 +91,7 @@ export default function InboxPage() {
       ) : (
         <div className="space-y-2">
           {contracts.map(contract => (
-            <ContractRow key={contract.id} contract={contract} onClick={() => setSelected(contract)} />
+            <ContractRow key={contract.id} contract={contract} onClick={() => setSelectedId(contract.id)} />
           ))}
         </div>
       )}

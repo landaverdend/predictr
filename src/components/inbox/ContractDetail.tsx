@@ -2,12 +2,14 @@ import { useState } from 'react'
 import { type Contract } from '../../db'
 import { Field } from './Field'
 import { AcceptTakerModal } from './AcceptTakerModal'
+import { useElectrum } from '../../hooks/useElectrum'
+import { signAndBroadcastFunding } from '../../lib/signFunding'
 
 const STATUS_LABEL: Record<string, string> = {
   offer_pending: 'open',
   take_received: 'action needed',
   psbt_sent: 'psbt sent',
-  awaiting_psbt: 'awaiting psbt',
+  awaiting_psbt: 'pending maker response',
   funded: 'funded',
   resolved: 'resolved',
   refunded: 'refunded',
@@ -27,6 +29,23 @@ const STATUS_COLOR: Record<string, string> = {
 
 export function ContractDetail({ contract, onBack }: { contract: Contract; onBack: () => void }) {
   const [showAccept, setShowAccept] = useState(false)
+  const [signing, setSigning] = useState(false)
+  const [signError, setSignError] = useState('')
+  const { clientRef } = useElectrum()
+
+  async function handleSignAndBroadcast() {
+    const client = clientRef.current
+    if (!client) { setSignError('electrum not connected'); return }
+    setSigning(true)
+    setSignError('')
+    try {
+      await signAndBroadcastFunding(contract, client)
+    } catch (e) {
+      setSignError(e instanceof Error ? e.message : 'failed')
+    } finally {
+      setSigning(false)
+    }
+  }
 
   const takerSide = contract.side === 'YES' ? 'NO' : 'YES'
   const totalPot = contract.makerStake + contract.takerStake
@@ -83,7 +102,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
         </div>
 
         {/* Taker request */}
-        {contract.takerInput && (
+        {contract.role === 'maker' && contract.takerInput && (
           <div className="border border-yellow-400/20 bg-yellow-400/5 rounded-lg p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-yellow-400 font-medium uppercase tracking-wider">taker request</p>
@@ -130,10 +149,20 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
         )}
 
         {/* PSBT received (taker) */}
-        {contract.role === 'taker' && contract.fundingPsbt && (
-          <div className="border border-blue-400/20 bg-blue-400/5 rounded-lg p-5 space-y-3">
-            <p className="text-xs text-blue-400 font-medium uppercase tracking-wider">funding psbt received</p>
+        {contract.role === 'taker' && contract.fundingPsbt && contract.status === 'psbt_sent' && (
+          <div className="border border-blue-400/20 bg-blue-400/5 rounded-lg p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-blue-400 font-medium uppercase tracking-wider">funding psbt received</p>
+              <button
+                onClick={handleSignAndBroadcast}
+                disabled={signing}
+                className="px-3 py-1.5 text-xs font-medium text-black bg-blue-400 rounded-lg hover:bg-blue-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {signing ? 'broadcasting…' : 'sign & broadcast'}
+              </button>
+            </div>
             <p className="font-mono text-[10px] text-white/30 break-all">{contract.fundingPsbt.slice(0, 120)}…</p>
+            {signError && <p className="text-xs text-red-400">{signError}</p>}
           </div>
         )}
       </div>

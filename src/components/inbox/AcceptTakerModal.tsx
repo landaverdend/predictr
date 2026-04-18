@@ -1,18 +1,10 @@
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { type Contract } from '../../db'
 import { Field } from './Field'
-import { useElectrum } from '../../hooks/useElectrum'
 import { useRelayContext } from '../../context/RelayContext'
-import type { ElectrumUTXO } from '../../lib/electrum'
+import { useWallet, type WalletUTXO } from '../../hooks/useWallet'
 import { sendFundingPsbt } from '../../lib/acceptTaker'
-
-const FEE_BUFFER = 2000
-
-function pickUtxo(utxos: ElectrumUTXO[], required: number): ElectrumUTXO | null {
-  const enough = utxos.filter(u => u.value >= required + FEE_BUFFER)
-  if (enough.length === 0) return null
-  return enough.reduce((a, b) => a.value <= b.value ? a : b)
-}
+import { ChangeAddressPicker } from './ChangeAddressPicker'
 
 // ── shared primitives ─────────────────────────────────────────────────────────
 
@@ -136,60 +128,19 @@ function ReviewStep({ contract, onCancel, onAccept }: {
 
 // ── step 2: maker funding inputs ──────────────────────────────────────────────
 
-type UtxoStatus = 'idle' | 'loading' | 'found' | 'error'
-
 function FundStep({ contract, onCancel, onConfirm }: {
   contract: Contract
   onCancel: () => void
-  onConfirm: (utxo: ElectrumUTXO, fundingAddress: string, changeAddress: string) => void
+  onConfirm: (funding: WalletUTXO, changeAddress: string) => void
 }) {
-  const { clientRef, ready: electrumReady } = useElectrum()
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const [fundingAddress, setFundingAddress] = useState('')
+  const { allUtxos, keys, utxosByAddress, loading } = useWallet()
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [changeAddress, setChangeAddress] = useState('')
-  const [utxoStatus, setUtxoStatus] = useState<UtxoStatus>('idle')
-  const [utxoError, setUtxoError] = useState('')
-  const [selectedUtxo, setSelectedUtxo] = useState<ElectrumUTXO | null>(null)
+
+  const eligible = allUtxos().filter(w => w.utxo.value >= contract.makerStake + 2000)
+  const selected = eligible.find(w => `${w.utxo.tx_hash}:${w.utxo.tx_pos}` === selectedId) ?? null
 
   const totalPot = contract.makerStake + contract.takerStake
-
-  function handleFundingAddressChange(value: string) {
-    setFundingAddress(value)
-    setSelectedUtxo(null)
-    setUtxoStatus('idle')
-    setUtxoError('')
-
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (!value.trim()) return
-
-    debounceRef.current = setTimeout(async () => {
-      const client = clientRef.current
-      if (!client) { setUtxoError('electrum not connected'); setUtxoStatus('error'); return }
-      setUtxoStatus('loading')
-      try {
-        const utxos = await client.getUTXOs(value.trim())
-        const best = pickUtxo(utxos, contract.makerStake)
-        if (!best) {
-          const total = utxos.reduce((s, u) => s + u.value, 0)
-          setUtxoError(
-            utxos.length === 0
-              ? 'no UTXOs found at this address'
-              : `largest UTXO (${Math.max(...utxos.map(u => u.value)).toLocaleString()} sats) is less than required ${(contract.makerStake + FEE_BUFFER).toLocaleString()} sats — total: ${total.toLocaleString()} sats`
-          )
-          setUtxoStatus('error')
-        } else {
-          setSelectedUtxo(best)
-          setUtxoStatus('found')
-        }
-      } catch (e) {
-        setUtxoError(e instanceof Error ? e.message : 'lookup failed')
-        setUtxoStatus('error')
-      }
-    }, 600)
-  }
-
-  const canConfirm = utxoStatus === 'found' && !!selectedUtxo && changeAddress.trim()
 
   return (
     <div className="space-y-4">
@@ -197,26 +148,48 @@ function FundStep({ contract, onCancel, onConfirm }: {
         You stake <span className="text-white/70 font-mono">{contract.makerStake.toLocaleString()} sats</span> to win <span className="text-green-400 font-mono">{totalPot.toLocaleString()} sats</span>.
       </p>
 
-      <AddressInput
-        label="funding address"
-        value={fundingAddress}
-        onChange={handleFundingAddressChange}
-        hint={!electrumReady ? <span className="text-[10px] text-yellow-400/70">electrum connecting…</span> : undefined}
+      <div className="space-y-2">
+        <p className="text-xs text-white/40">select UTXO</p>
+        {loading && <p className="text-xs text-white/30">loading wallet…</p>}
+        {!loading && keys.length === 0 && (
+          <p className="text-xs text-red-400">no wallet keys — generate one in the wallet tab</p>
+        )}
+        {!loading && keys.length > 0 && eligible.length === 0 && (
+          <p className="text-xs text-red-400">no UTXOs with enough balance — need at least {(contract.makerStake + 2000).toLocaleString()} sats</p>
+        )}
+        {eligible.map(w => {
+          const id = `${w.utxo.tx_hash}:${w.utxo.tx_pos}`
+          const active = selectedId === id
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => { setSelectedId(id); setChangeAddress(w.key.address) }}
+              className={`w-full text-left rounded-lg border px-4 py-3 text-xs font-mono transition-colors ${active ? 'border-white/40 bg-white/5' : 'border-white/10 hover:border-white/20'}`}
+            >
+              <div className="flex justify-between">
+                <span className="text-white/40">{w.utxo.tx_hash.slice(0, 10)}…:{w.utxo.tx_pos}</span>
+                <span className="text-white/70">{w.utxo.value.toLocaleString()} sats</span>
+              </div>
+              <div className="text-white/30 mt-0.5">{w.key.address.slice(0, 20)}…</div>
+            </button>
+          )
+        })}
+      </div>
+
+      <ChangeAddressPicker
+        value={changeAddress}
+        onChange={setChangeAddress}
+        keys={keys}
+        utxosByAddress={utxosByAddress}
+        highlightAddress={selected?.key.address}
       />
-
-      {utxoStatus === 'loading' && <p className="text-xs text-white/30">looking up UTXOs…</p>}
-      {utxoStatus === 'error' && <p className="text-xs text-red-400">{utxoError}</p>}
-      {utxoStatus === 'found' && selectedUtxo && (
-        <UtxoCard utxo={selectedUtxo} stake={contract.makerStake} />
-      )}
-
-      <AddressInput label="change address" value={changeAddress} onChange={setChangeAddress} />
 
       <ModalActions
         onCancel={onCancel}
-        onConfirm={() => selectedUtxo && onConfirm(selectedUtxo, fundingAddress.trim(), changeAddress.trim())}
+        onConfirm={() => selected && onConfirm(selected, changeAddress.trim())}
         confirmLabel="confirm"
-        disabled={!canConfirm}
+        disabled={!selected || !changeAddress.trim()}
       />
     </div>
   )
@@ -232,11 +205,11 @@ export function AcceptTakerModal({ contract, onClose }: { contract: Contract; on
 
   const title = step === 'review' ? 'accept taker request' : 'your funding details'
 
-  async function handleConfirm(utxo: ElectrumUTXO, fundingAddress: string, changeAddress: string) {
+  async function handleConfirm(funding: WalletUTXO, changeAddress: string) {
     setSending(true)
     setError('')
     try {
-      await sendFundingPsbt(publish, contract, { utxo, fundingAddress, changeAddress })
+      await sendFundingPsbt(publish, contract, { funding, changeAddress })
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'failed to send PSBT')
@@ -264,7 +237,7 @@ export function AcceptTakerModal({ contract, onClose }: { contract: Contract; on
           <ReviewStep contract={contract} onCancel={onClose} onAccept={() => setStep('fund')} />
         )}
         {step === 'fund' && (
-          <FundStep contract={contract} onCancel={onClose} onConfirm={handleConfirm} />
+          <FundStep contract={contract} onCancel={() => setStep('review')} onConfirm={handleConfirm} />
         )}
         {error && <p className="text-xs text-red-400">{error}</p>}
         {sending && <p className="text-xs text-white/40">sending PSBT…</p>}
