@@ -78,11 +78,27 @@ export interface WalletKey {
   createdAt: number
 }
 
+export interface OracleMarket {
+  id: string                      // d-tag / marketId
+  eventId: string                 // Kind 30050 event ID
+  question: string
+  description: string
+  resolutionBlockheight: number
+  yesHash: string
+  noHash: string
+  yesPreimage: string             // kept secret until resolution
+  noPreimage: string
+  resolvedOutcome?: 'YES' | 'NO'
+  resolutionEventId?: string      // Kind 30052 event ID
+  createdAt: number
+}
+
 class NostrDlcDb extends Dexie {
   contracts!: Table<Contract>
   messages!: Table<Message>
   keys!: Table<KeyRecord>
   wallet!: Table<WalletKey>
+  oracleMarkets!: Table<OracleMarket>
 
   constructor() {
     super('nostr_dlc')
@@ -101,6 +117,13 @@ class NostrDlcDb extends Dexie {
       messages: 'id, contractId, createdAt',
       keys: 'id',
       wallet: 'id',
+    })
+    this.version(4).stores({
+      contracts: 'id, role, status, marketId, createdAt, updatedAt',
+      messages: 'id, contractId, createdAt',
+      keys: 'id',
+      wallet: 'id',
+      oracleMarkets: 'id, createdAt',
     })
   }
 }
