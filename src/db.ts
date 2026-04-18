@@ -69,10 +69,19 @@ export interface KeyRecord {
   pubkey: string
 }
 
+export interface WalletKey {
+  id: string        // random hex
+  privkey: string   // hex
+  pubkey: string    // hex x-only
+  address: string   // P2TR regtest address
+  createdAt: number
+}
+
 class NostrDlcDb extends Dexie {
   contracts!: Table<Contract>
   messages!: Table<Message>
   keys!: Table<KeyRecord>
+  wallet!: Table<WalletKey>
 
   constructor() {
     super('nostr_dlc')
@@ -85,6 +94,12 @@ class NostrDlcDb extends Dexie {
       contracts: 'id, role, status, marketId, createdAt, updatedAt',
       messages: 'id, contractId, createdAt',
       keys: 'id',
+    })
+    this.version(3).stores({
+      contracts: 'id, role, status, marketId, createdAt, updatedAt',
+      messages: 'id, contractId, createdAt',
+      keys: 'id',
+      wallet: 'id',
     })
   }
 }

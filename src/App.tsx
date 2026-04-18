@@ -5,6 +5,7 @@ import Navbar from './components/Navbar'
 import MarketsPage from './pages/MarketsPage'
 import OraclePage from './pages/OraclePage'
 import InboxPage from './pages/InboxPage'
+import WalletPage from './pages/WalletPage'
 import { useDMs } from './hooks/useDMs'
 
 function DmListener() {
@@ -29,6 +30,7 @@ export default function App() {
             <Route path="/" element={<MarketsPage />} />
             <Route path="/oracle" element={<OraclePage />} />
             <Route path="/inbox" element={<InboxPage />} />
+            <Route path="/wallet" element={<WalletPage />} />
           </Routes>
         </div>
       </RelayProvider>

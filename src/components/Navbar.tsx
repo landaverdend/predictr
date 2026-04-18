@@ -11,6 +11,7 @@ const links = [
   { to: '/', label: 'markets' },
   { to: '/oracle', label: 'oracle' },
   { to: '/inbox', label: 'inbox' },
+  { to: '/wallet', label: 'wallet' },
 ]
 
 export default function Navbar() {
