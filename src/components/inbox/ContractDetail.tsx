@@ -4,6 +4,7 @@ import { Field } from './Field'
 import { AcceptTakerModal } from './AcceptTakerModal'
 import { useElectrum } from '../../hooks/useElectrum'
 import { signAndBroadcastFunding } from '../../lib/signFunding'
+import { refundFunding } from '../../lib/refundFunding'
 
 const STATUS_LABEL: Record<string, string> = {
   offer_pending: 'open',
@@ -31,6 +32,8 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   const [showAccept, setShowAccept] = useState(false)
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState('')
+  const [refunding, setRefunding] = useState(false)
+  const [refundError, setRefundError] = useState('')
   const { clientRef } = useElectrum()
 
   async function handleSignAndBroadcast() {
@@ -44,6 +47,20 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
       setSignError(e instanceof Error ? e.message : 'failed')
     } finally {
       setSigning(false)
+    }
+  }
+
+  async function handleRefund() {
+    const client = clientRef.current
+    if (!client) { setRefundError('electrum not connected'); return }
+    setRefunding(true)
+    setRefundError('')
+    try {
+      await refundFunding(contract, client)
+    } catch (e) {
+      setRefundError(e instanceof Error ? e.message : 'failed')
+    } finally {
+      setRefunding(false)
     }
   }
 
@@ -163,6 +180,27 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
             </div>
             <p className="font-mono text-[10px] text-white/30 break-all">{contract.fundingPsbt.slice(0, 120)}…</p>
             {signError && <p className="text-xs text-red-400">{signError}</p>}
+          </div>
+        )}
+        {/* Refund */}
+        {contract.status === 'funded' && (
+          <div className="border border-white/10 rounded-lg p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-white/50 font-medium uppercase tracking-wider">refund</p>
+                <p className="text-xs text-white/30 mt-0.5">
+                  spendable after block {(contract.resolutionBlockheight + 144).toLocaleString()}
+                </p>
+              </div>
+              <button
+                onClick={handleRefund}
+                disabled={refunding}
+                className="px-3 py-1.5 text-xs font-medium text-black bg-white/80 rounded-lg hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {refunding ? 'broadcasting…' : 'claim refund'}
+              </button>
+            </div>
+            {refundError && <p className="text-xs text-red-400">{refundError}</p>}
           </div>
         )}
       </div>

@@ -41,6 +41,7 @@ export function useDMs() {
               counterpartyPubkey: msg.taker_pubkey as string,
               takerInput: msg.input as { txid: string; vout: number; amount: number },
               takerChangeAddress: msg.change_address as string,
+              takerWalletPubkey: msg.taker_wallet_pubkey as string,
               updatedAt: now,
             })
           } else if (msg.type === 'psbt_offer') {
@@ -51,6 +52,7 @@ export function useDMs() {
             await db.contracts.update(offerEventId, {
               status: 'psbt_sent',
               fundingPsbt: msg.funding_psbt as string,
+              makerWalletPubkey: msg.maker_wallet_pubkey as string,
               updatedAt: now,
             })
           }

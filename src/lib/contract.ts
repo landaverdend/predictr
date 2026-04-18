@@ -7,11 +7,9 @@ export const REGTEST: Network = { bech32: 'bcrt', pubKeyHash: 0x6f, scriptHash: 
 export type ContractParams = {
   yesHash: string              // 32-byte hex — SHA256(yes_preimage)
   noHash: string               // 32-byte hex — SHA256(no_preimage)
-  makerPubkey: string          // 32-byte x-only hex (nostr pubkey)
-  takerPubkey: string          // 32-byte x-only hex (nostr pubkey)
+  makerPubkey: string          // 32-byte x-only hex — wallet pubkey, used in DLC script leaves
+  takerPubkey: string          // 32-byte x-only hex — wallet pubkey, used in DLC script leaves
   resolutionBlockheight: number
-
-
 }
 
 function hex(s: string): Uint8Array {
@@ -21,7 +19,7 @@ function hex(s: string): Uint8Array {
   return arr
 }
 
-function buildContractOutputScripts(p: ContractParams, network: Network = REGTEST) {
+export function buildContractOutputScripts(p: ContractParams, network: Network = REGTEST) {
   const yh = hex(p.yesHash)
   const nh = hex(p.noHash)
   const mk = hex(p.makerPubkey)

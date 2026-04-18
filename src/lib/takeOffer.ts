@@ -19,9 +19,13 @@ export async function sendTakeRequest(
   const now = Date.now()
   const impliedTakerStake = takerStake(offer)
 
+  const walletKey = await db.wallet.get(walletKeyId)
+  if (!walletKey) throw new Error('wallet key not found')
+
   const takeRequest: TakeRequest = {
     type: 'take_request',
     taker_pubkey: takerPubkey,
+    taker_wallet_pubkey: walletKey.pubkey,
     input,
     change_address: changeAddress,
   }
@@ -57,6 +61,7 @@ export async function sendTakeRequest(
     takerInput: input,
     takerChangeAddress: changeAddress,
     takerWalletKeyId: walletKeyId,
+    takerWalletPubkey: walletKey.pubkey,
     createdAt: now,
     updatedAt: now,
   })

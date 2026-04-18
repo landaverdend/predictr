@@ -21,13 +21,16 @@ export async function sendFundingPsbt(
   if (!contract.takerInput || !contract.takerChangeAddress) throw new Error('missing taker input data')
 
   const makerPubkey = await window.nostr.getPublicKey()
+  const makerWalletPubkey = maker.funding.key.pubkey
+
+  if (!contract.takerWalletPubkey) throw new Error('missing taker wallet pubkey — taker must re-send take request')
 
   const tx = buildFundingTx(
     {
       yesHash: contract.yesHash,
       noHash: contract.noHash,
-      makerPubkey,
-      takerPubkey: contract.counterpartyPubkey,
+      makerPubkey: makerWalletPubkey,
+      takerPubkey: contract.takerWalletPubkey,
       resolutionBlockheight: contract.resolutionBlockheight,
     },
     {
@@ -45,7 +48,7 @@ export async function sendFundingPsbt(
   tx.signIdx(hexToBytes(maker.funding.key.privkey), 0, [SigHash.ALL_ANYONECANPAY])
   const psbt = btoa(String.fromCharCode(...tx.toPSBT()))
 
-  const payload = JSON.stringify({ type: 'psbt_offer', funding_psbt: psbt })
+  const payload = JSON.stringify({ type: 'psbt_offer', funding_psbt: psbt, maker_wallet_pubkey: makerWalletPubkey })
   const ciphertext = await window.nostr.nip44.encrypt(contract.counterpartyPubkey, payload)
   const now = Date.now()
 
@@ -60,7 +63,13 @@ export async function sendFundingPsbt(
   await publish(signed)
 
   await Promise.all([
-    db.contracts.update(contract.id, { status: 'psbt_sent', fundingPsbt: psbt, updatedAt: now }),
+    db.contracts.update(contract.id, {
+      status: 'psbt_sent',
+      fundingPsbt: psbt,
+      makerWalletKeyId: maker.funding.key.id,
+      makerWalletPubkey: makerWalletPubkey,
+      updatedAt: now,
+    }),
     db.messages.put({
       id: signed.id,
       contractId: contract.id,

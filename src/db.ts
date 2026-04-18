@@ -42,7 +42,10 @@ export interface Contract {
   makerInput?: { txid: string; vout: number; amount: number }
   takerInput?: { txid: string; vout: number; amount: number }
   takerChangeAddress?: string
-  takerWalletKeyId?: string    // wallet key used for taker's funding input
+  makerWalletKeyId?: string    // wallet key used for maker's funding input + DLC script
+  makerWalletPubkey?: string   // x-only hex — used in DLC script leaves
+  takerWalletKeyId?: string    // wallet key used for taker's funding input + DLC script
+  takerWalletPubkey?: string   // x-only hex — used in DLC script leaves
 
   // contract lifecycle
   fundingPsbt?: string            // base64
@@ -119,6 +122,13 @@ class NostrDlcDb extends Dexie {
       wallet: 'id',
     })
     this.version(4).stores({
+      contracts: 'id, role, status, marketId, createdAt, updatedAt',
+      messages: 'id, contractId, createdAt',
+      keys: 'id',
+      wallet: 'id',
+      oracleMarkets: 'id, createdAt',
+    })
+    this.version(5).stores({
       contracts: 'id, role, status, marketId, createdAt, updatedAt',
       messages: 'id, contractId, createdAt',
       keys: 'id',

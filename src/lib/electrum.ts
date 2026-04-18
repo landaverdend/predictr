@@ -110,6 +110,11 @@ export class ElectrumWS {
     return this.request('blockchain.transaction.broadcast', [hex])
   }
 
+  async getBlockHeight(): Promise<number> {
+    const result = await this.request<{ height: number }>('blockchain.headers.subscribe', [])
+    return result.height
+  }
+
   close() {
     this.ws?.close()
     this.ws = null
