@@ -2,7 +2,9 @@ import { useState, useRef } from 'react'
 import { type Contract } from '../../db'
 import { Field } from './Field'
 import { useElectrum } from '../../hooks/useElectrum'
+import { useRelayContext } from '../../context/RelayContext'
 import type { ElectrumUTXO } from '../../lib/electrum'
+import { sendFundingPsbt } from '../../lib/acceptTaker'
 
 const FEE_BUFFER = 2000
 
@@ -139,14 +141,13 @@ type UtxoStatus = 'idle' | 'loading' | 'found' | 'error'
 function FundStep({ contract, onCancel, onConfirm }: {
   contract: Contract
   onCancel: () => void
-  onConfirm: (utxo: ElectrumUTXO, changeAddress: string, winAddress: string) => void
+  onConfirm: (utxo: ElectrumUTXO, fundingAddress: string, changeAddress: string) => void
 }) {
   const { clientRef, ready: electrumReady } = useElectrum()
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [fundingAddress, setFundingAddress] = useState('')
   const [changeAddress, setChangeAddress] = useState('')
-  const [winAddress, setWinAddress] = useState('')
   const [utxoStatus, setUtxoStatus] = useState<UtxoStatus>('idle')
   const [utxoError, setUtxoError] = useState('')
   const [selectedUtxo, setSelectedUtxo] = useState<ElectrumUTXO | null>(null)
@@ -188,7 +189,7 @@ function FundStep({ contract, onCancel, onConfirm }: {
     }, 600)
   }
 
-  const canConfirm = utxoStatus === 'found' && !!selectedUtxo && changeAddress.trim() && winAddress.trim()
+  const canConfirm = utxoStatus === 'found' && !!selectedUtxo && changeAddress.trim()
 
   return (
     <div className="space-y-4">
@@ -210,11 +211,10 @@ function FundStep({ contract, onCancel, onConfirm }: {
       )}
 
       <AddressInput label="change address" value={changeAddress} onChange={setChangeAddress} />
-      <AddressInput label="win address" value={winAddress} onChange={setWinAddress} />
 
       <ModalActions
         onCancel={onCancel}
-        onConfirm={() => selectedUtxo && onConfirm(selectedUtxo, changeAddress.trim(), winAddress.trim())}
+        onConfirm={() => selectedUtxo && onConfirm(selectedUtxo, fundingAddress.trim(), changeAddress.trim())}
         confirmLabel="confirm"
         disabled={!canConfirm}
       />
@@ -222,17 +222,27 @@ function FundStep({ contract, onCancel, onConfirm }: {
   )
 }
 
-// ── modal shell ───────────────────────────────────────────────────────────────
-
 type Step = 'review' | 'fund'
 
 export function AcceptTakerModal({ contract, onClose }: { contract: Contract; onClose: () => void }) {
   const [step, setStep] = useState<Step>('review')
+  const [sending, setSending] = useState(false)
+  const [error, setError] = useState('')
+  const { publish } = useRelayContext()
 
   const title = step === 'review' ? 'accept taker request' : 'your funding details'
 
-  function handleConfirm(_utxo: ElectrumUTXO, _changeAddress: string, _winAddress: string) {
-    // TODO: build and send funding PSBT
+  async function handleConfirm(utxo: ElectrumUTXO, fundingAddress: string, changeAddress: string) {
+    setSending(true)
+    setError('')
+    try {
+      await sendFundingPsbt(publish, contract, { utxo, fundingAddress, changeAddress })
+      onClose()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'failed to send PSBT')
+    } finally {
+      setSending(false)
+    }
   }
 
   return (
@@ -256,6 +266,8 @@ export function AcceptTakerModal({ contract, onClose }: { contract: Contract; on
         {step === 'fund' && (
           <FundStep contract={contract} onCancel={onClose} onConfirm={handleConfirm} />
         )}
+        {error && <p className="text-xs text-red-400">{error}</p>}
+        {sending && <p className="text-xs text-white/40">sending PSBT…</p>}
 
       </div>
     </div>

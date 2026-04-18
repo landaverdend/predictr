@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ElectrumWS } from '../lib/electrum'
 
-const ELECTRUM_URL = 'ws://localhost:5050/electrum'
+const ELECTRUM_URL = 'ws://nigiri.kratom.io:5050/electrum'
 
 export function useElectrum() {
   const clientRef = useRef<ElectrumWS | null>(null)

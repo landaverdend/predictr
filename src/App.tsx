@@ -21,7 +21,7 @@ function DmListener() {
 export default function App() {
   return (
     <BrowserRouter>
-      <RelayProvider url="ws://localhost:8080">
+      <RelayProvider url="ws://kratomstr.io:7777">
         <div className="min-h-screen bg-black text-white flex flex-col">
           <Navbar />
           <DmListener />
