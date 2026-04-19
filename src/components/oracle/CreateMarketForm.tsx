@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRelayContext } from '../../context/RelayContext'
 import { db } from '../../db'
 
@@ -15,13 +15,18 @@ async function sha256hex(hex: string): Promise<string> {
 }
 
 export function CreateMarketForm() {
-  const { publish } = useRelayContext()
+  const { publish, relays: savedRelays } = useRelayContext()
   const [question, setQuestion] = useState('')
   const [description, setDescription] = useState('')
   const [resolutionBlockheight, setResolutionBlockheight] = useState('')
   const [imageUri, setImageUri] = useState('')
-  const [relays, setRelays] = useState<string[]>(['ws://localhost:8080'])
+  const [relays, setRelays] = useState<string[]>(savedRelays)
   const [relayInput, setRelayInput] = useState('')
+
+  // Sync once when saved relays load from DB (they start empty until async load completes)
+  useEffect(() => {
+    if (savedRelays.length > 0) setRelays(savedRelays)
+  }, [savedRelays.join(',')])
   const [status, setStatus] = useState<'idle' | 'publishing' | 'done' | 'error'>('idle')
   const [error, setError] = useState('')
 

@@ -26,4 +26,8 @@
     background-color: var(--color-base);
     color: var(--color-ink);
   }
+
+  button, [role="button"], a {
+    cursor: pointer;
+  }
 }

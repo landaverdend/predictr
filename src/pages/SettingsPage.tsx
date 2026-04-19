@@ -1,5 +1,125 @@
+import { useEffect, useState } from 'react'
 import { useNostrUser } from '../hooks/useNostrUser'
+import { useRelayContext } from '../context/RelayContext'
 import { db } from '../db'
+
+function RelayManager() {
+  const { relays, saveRelays } = useRelayContext()
+  const [draft, setDraft] = useState<string[]>(relays)
+  const [editingIdx, setEditingIdx] = useState<number | null>(null)
+  const [editValue, setEditValue] = useState('')
+  const [input, setInput] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setDraft(relays)
+  }, [relays.join(',')])
+
+  const isDirty = draft.join(',') !== relays.join(',')
+
+  function handleAdd() {
+    const url = input.trim()
+    if (!url || draft.includes(url)) return
+    setDraft(prev => [...prev, url])
+    setInput('')
+  }
+
+  function handleRemove(idx: number) {
+    setDraft(prev => prev.filter((_, i) => i !== idx))
+    if (editingIdx === idx) setEditingIdx(null)
+  }
+
+  function startEdit(idx: number) {
+    setEditingIdx(idx)
+    setEditValue(draft[idx])
+  }
+
+  function commitEdit(idx: number) {
+    const url = editValue.trim()
+    if (url && url !== draft[idx]) {
+      setDraft(prev => prev.map((r, i) => i === idx ? url : r))
+    }
+    setEditingIdx(null)
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await saveRelays(draft)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="space-y-1.5">
+        {draft.map((url, idx) => (
+          <div key={idx} className="flex items-center gap-2 bg-elevated rounded-lg px-3 py-2">
+            {editingIdx === idx ? (
+              <input
+                autoFocus
+                type="text"
+                value={editValue}
+                onChange={e => setEditValue(e.target.value)}
+                onBlur={() => commitEdit(idx)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') commitEdit(idx)
+                  if (e.key === 'Escape') setEditingIdx(null)
+                }}
+                className="flex-1 bg-transparent text-sm font-mono text-ink/90 focus:outline-none"
+              />
+            ) : (
+              <button
+                onClick={() => startEdit(idx)}
+                className="flex-1 text-left text-sm font-mono text-ink/70 hover:text-ink/90 transition-colors truncate"
+              >
+                {url}
+              </button>
+            )}
+            <button
+              onClick={() => handleRemove(idx)}
+              className="text-ink/20 hover:text-negative transition-colors text-lg leading-none shrink-0"
+            >
+              ×
+            </button>
+          </div>
+        ))}
+        {draft.length === 0 && (
+          <p className="text-xs text-ink/30">no relays configured</p>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <input
+          type="text"
+          placeholder="wss://relay.example.com"
+          value={input}
+          onChange={e => setInput(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleAdd()}
+          className="flex-1 bg-elevated border border-ink/10 rounded-lg px-4 py-2.5 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
+        />
+        <button
+          onClick={handleAdd}
+          disabled={!input.trim()}
+          className="px-4 py-2.5 text-sm border border-ink/20 rounded-lg hover:bg-ink/5 disabled:opacity-30 transition-colors"
+        >
+          add
+        </button>
+      </div>
+
+      <div className="flex justify-end pt-1 border-t border-ink/5">
+        <button
+          onClick={handleSave}
+          disabled={!isDirty || saving}
+          className="px-5 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-light disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        >
+          {saving ? 'saving…' : 'save'}
+        </button>
+      </div>
+    </div>
+  )
+}
 
 export default function SettingsPage() {
   const user = useNostrUser()
@@ -52,15 +172,12 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      {/* Relay */}
+      {/* Relays */}
       <section className="border border-ink/10 rounded-xl overflow-hidden">
         <div className="px-5 py-3 bg-elevated border-b border-ink/5">
-          <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">relay</p>
+          <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">relays</p>
         </div>
-        <div className="p-5">
-          <p className="text-sm font-mono text-ink/70">ws://kratomstr.io:7777</p>
-          <p className="text-xs text-ink/30 mt-1">hardcoded — regtest relay</p>
-        </div>
+        <RelayManager />
       </section>
 
       {/* Data */}
