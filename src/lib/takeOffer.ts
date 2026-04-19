@@ -13,7 +13,7 @@ export async function sendTakeRequest(
   walletKeyId: string,
 ): Promise<void> {
   if (!window.nostr) throw new Error('no nostr extension found')
-  if (!window.nostr.nip44) throw new Error('nostr extension does not support NIP-44 — upgrade Alby')
+  if (!window.nostr.nip44) throw new Error('nostr extension does not support NIP-44')
 
   const takerPubkey = await window.nostr.getPublicKey()
   const now = Date.now()

@@ -3,12 +3,67 @@ import type { Contract } from '../db'
 import { db } from '../db'
 import { buildContractOutputScripts, REGTEST } from './contract'
 import type { ElectrumWS } from './electrum'
-import { hexToBytes, REFUND_DELAY } from './utils'
+import { hexToBytes, equalBytes, REFUND_DELAY } from './utils'
 
 // Leaf order after taprootWalkTree on [yesLeaf, noLeaf, cltvLeaf]: [no=0, cltv=1, yes=2]
 const YES_LEAF_IDX = 2
 const CLTV_LEAF_IDX = 1
 const NO_LEAF_IDX = 0
+
+// ── PSBT validation (taker) ───────────────────────────────────────────────────
+
+// Rebuilds the expected contract scripts from known parameters and verifies
+// the PSBT outputs match exactly — prevents the maker from substituting a
+// script they fully control.
+export function validateFundingPsbt(tx: Transaction, contract: Contract): void {
+  if (!contract.makerWalletPubkey) throw new Error('missing maker wallet pubkey')
+  if (!contract.takerWalletPubkey) throw new Error('missing taker wallet pubkey')
+  if (!contract.takerInput) throw new Error('missing taker input')
+
+  // Must have at least 2 inputs (maker + taker) and 2 outputs (contract outputs)
+  if (tx.inputsLength < 2) throw new Error('PSBT has fewer than 2 inputs')
+  if (tx.outputsLength < 2) throw new Error('PSBT has fewer than 2 outputs')
+
+  // Verify taker's input references the expected UTXO
+  const takerIn = tx.getInput(1)
+  if (takerIn.txid === undefined || takerIn.index === undefined)
+    throw new Error('taker input missing txid/index')
+  const takerTxid = Array.from(takerIn.txid).map(b => b.toString(16).padStart(2, '0')).join('')
+  if (takerTxid !== contract.takerInput.txid || takerIn.index !== contract.takerInput.vout)
+    throw new Error('taker input does not match expected UTXO')
+
+  // Rebuild expected scripts and compare byte-for-byte
+  const { makerOutput, takerOutput } = buildContractOutputScripts({
+    yesHash: contract.yesHash,
+    noHash: contract.noHash,
+    makerPubkey: contract.makerWalletPubkey,
+    takerPubkey: contract.takerWalletPubkey,
+    resolutionBlockheight: contract.resolutionBlockheight,
+  })
+
+  const out0 = tx.getOutput(0)
+  const out1 = tx.getOutput(1)
+
+  if (!out0.script || !equalBytes(out0.script, makerOutput.script))
+    throw new Error('output 0 script does not match expected maker contract script')
+  if (!out1.script || !equalBytes(out1.script, takerOutput.script))
+    throw new Error('output 1 script does not match expected taker contract script')
+
+  if (out0.amount !== BigInt(contract.makerStake))
+    throw new Error(`output 0 amount ${out0.amount} does not match maker stake ${contract.makerStake}`)
+  if (out1.amount !== BigInt(contract.takerStake))
+    throw new Error(`output 1 amount ${out1.amount} does not match taker stake ${contract.takerStake}`)
+
+  // Ensure taker isn't being drained beyond stake + reasonable fee
+  const takerUtxoAmount = BigInt(contract.takerInput.amount)
+  const takerChange = Array.from({ length: tx.outputsLength }, (_, i) => tx.getOutput(i))
+    .slice(2)
+    .reduce((sum, o) => sum + (o.amount ?? 0n), 0n)
+  const takerSpend = takerUtxoAmount - takerChange
+  const maxAllowed = BigInt(contract.takerStake) + 2000n // stake + max fee
+  if (takerSpend > maxAllowed)
+    throw new Error(`taker would spend ${takerSpend} sats but agreed to stake ${contract.takerStake} + fee`)
+}
 
 // ── sign & broadcast (taker) ──────────────────────────────────────────────────
 
@@ -25,6 +80,8 @@ export async function signAndBroadcastFunding(
 
   const psbtBytes = Uint8Array.from(atob(contract.fundingPsbt), c => c.charCodeAt(0))
   const tx = Transaction.fromPSBT(psbtBytes, { allowUnknownOutputs: true })
+
+  validateFundingPsbt(tx, contract)
 
   // Replace the maker's dummy witnessUtxo on taker's input with the real one
   const script = OutScript.encode(Address(REGTEST).decode(walletKey.address))
