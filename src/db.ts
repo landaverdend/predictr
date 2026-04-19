@@ -22,10 +22,10 @@ export interface Contract {
   side: ContractSide              // maker's side; taker gets the opposite
 
   // market info
-  marketId: string                // d tag from Kind 30050
+  marketId: string                // d tag from Kind 8050
   marketQuestion: string
   oraclePubkey: string
-  announcementEventId: string     // Kind 30050 event id
+  announcementEventId: string     // Kind 8050 event id
   yesHash: string
   noHash: string
   resolutionBlockheight: number
@@ -87,7 +87,7 @@ export interface WalletKey {
 
 export interface OracleMarket {
   id: string                      // d-tag / marketId
-  eventId: string                 // Kind 30050 event ID
+  eventId: string                 // Kind 8050 event ID
   question: string
   description: string
   resolutionBlockheight: number
@@ -96,7 +96,7 @@ export interface OracleMarket {
   yesPreimage: string             // kept secret until resolution
   noPreimage: string
   resolvedOutcome?: 'YES' | 'NO'
-  resolutionEventId?: string      // Kind 30052 event ID
+  resolutionEventId?: string      // Kind 8052 event ID
   createdAt: number
 }
 

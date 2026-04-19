@@ -20,7 +20,7 @@ export default function Navbar() {
   return (
     <header className="border-b border-white/10 px-6 py-4 flex items-center justify-between">
       <div className="flex items-center gap-6">
-        <span className="font-mono font-bold tracking-tight">nostr_dlc</span>
+        <span className="font-mono font-bold tracking-tight">predictr</span>
         <nav className="flex items-center gap-4">
           {links.map(({ to, label }) => (
             <NavLink

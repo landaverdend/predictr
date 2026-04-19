@@ -18,7 +18,7 @@ export function MarketRow({ market }: { market: OracleMarket }) {
       const pubkey = await window.nostr.getPublicKey()
 
       const signed = await window.nostr.signEvent({
-        kind: 30052,
+        kind: 8052,
         pubkey,
         created_at: Math.floor(Date.now() / 1000),
         tags: [

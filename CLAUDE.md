@@ -16,7 +16,7 @@ A Bitcoin DLC (Discreet Log Contract) frontend. Users bet on binary outcomes (YE
 
 ### Roles
 
-- **Oracle** — creates a market (Kind 30050 event) committing to two SHA256 hashes (`yes_hash`, `no_hash`). Preimages stored in `localStorage`. Reveals one preimage at resolution blockheight.
+- **Oracle** — creates a market (Kind 8050 event) committing to two SHA256 hashes (`yes_hash`, `no_hash`). Preimages stored in `localStorage`. Reveals one preimage at resolution blockheight.
 - **Maker** — takes a side (YES/NO) on a market, stakes sats, publishes a Kind 30051 offer event. Waits for taker DM, then builds and sends funding PSBT.
 - **Taker** — finds an offer, sends a `take_request` DM (Kind 14, NIP-44) to maker with their UTXO info. Receives funding PSBT back, signs and broadcasts.
 
@@ -49,7 +49,7 @@ Funded as P2WSH. Winner claims by providing the oracle's revealed preimage + the
 
 | Kind  | Purpose |
 |-------|---------|
-| 30050 | Market announcement (oracle) |
+| 8050  | Market announcement (oracle) |
 | 30051 | Offer (maker) |
 | 14    | Encrypted DM (NIP-44) — take_request / psbt_offer |
 

@@ -15,9 +15,9 @@ export default function MarketsPage() {
   useEffect(() => {
     const unsub = subscribe(
       'markets-feed',
-      [{ kinds: [30050, 30051] }],
+      [{ kinds: [8050, 30051] }],
       (event: NostrEvent) => {
-        if (event.kind === 30050) {
+        if (event.kind === 8050) {
           const market = parseMarket(event)
           setMarkets(prev => ({ ...prev, [market.id]: { ...market, offerCount: prev[market.id]?.offerCount ?? 0 } }))
         } else if (event.kind === 30051) {

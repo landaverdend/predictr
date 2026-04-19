@@ -53,7 +53,7 @@ export function CreateMarketForm() {
       const now = Date.now()
 
       const signed = await window.nostr.signEvent({
-        kind: 30050,
+        kind: 8050,
         pubkey,
         created_at: Math.floor(now / 1000),
         tags: [
