@@ -63,9 +63,19 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   }
 
   const takerSide = contract.side === 'YES' ? 'NO' : 'YES'
-  const totalPot = contract.makerStake + contract.takerStake
   const ourSide = contract.role === 'maker' ? contract.side : takerSide
   const ourStake = contract.role === 'maker' ? contract.makerStake : contract.takerStake
+  const totalPot = contract.makerStake + contract.takerStake
+  const won = contract.status === 'resolved' && contract.outcome
+    ? ourSide === contract.outcome
+    : null
+
+  const statusLabel = contract.status === 'resolved'
+    ? (won === true ? 'won' : won === false ? 'lost' : 'resolved')
+    : (STATUS_LABEL[contract.status] ?? contract.status)
+  const statusColor = contract.status === 'resolved'
+    ? (won === true ? 'text-green-400 bg-green-400/10' : won === false ? 'text-red-400 bg-red-400/10' : 'text-white/40 bg-white/5')
+    : (STATUS_COLOR[contract.status] ?? 'text-white/40 bg-white/5')
 
   return (
     <>
@@ -78,8 +88,8 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
         <div className="border border-white/10 rounded-lg p-5 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <p className="font-medium leading-snug flex-1">{contract.marketQuestion}</p>
-            <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${STATUS_COLOR[contract.status] ?? 'text-white/40 bg-white/5'}`}>
-              {STATUS_LABEL[contract.status] ?? contract.status}
+            <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${statusColor}`}>
+              {statusLabel}
             </span>
           </div>
 
@@ -117,7 +127,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
         </div>
 
         {/* Taker request */}
-        {contract.role === 'maker' && contract.takerInput && (
+        {contract.role === 'maker' && contract.status === 'take_received' && contract.takerInput && (
           <div className="border border-yellow-400/20 bg-yellow-400/5 rounded-lg p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-yellow-400 font-medium uppercase tracking-wider">taker request</p>

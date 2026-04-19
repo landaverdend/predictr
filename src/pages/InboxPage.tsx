@@ -4,6 +4,7 @@ import { db, type Contract } from '../db'
 import { ContractDetail } from '../components/inbox/ContractDetail'
 import { useDMs } from '../hooks/useDMs'
 import { useWatchFunding } from '../hooks/useWatchFunding'
+import { useWatchResolution } from '../hooks/useWatchResolution'
 
 const STATUS_LABEL: Record<string, string> = {
   offer_pending: 'open',
@@ -35,9 +36,21 @@ function timeAgo(ts: number) {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
+function resolvedLabel(contract: Contract): { label: string; color: string } {
+  if (contract.status !== 'resolved' || !contract.outcome) return { label: 'resolved', color: 'text-white/40 bg-white/5' }
+  const ourSide = contract.role === 'maker' ? contract.side : (contract.side === 'YES' ? 'NO' : 'YES')
+  const won = ourSide === contract.outcome
+  return won
+    ? { label: 'won', color: 'text-green-400 bg-green-400/10' }
+    : { label: 'lost', color: 'text-red-400 bg-red-400/10' }
+}
+
 function ContractRow({ contract, onClick }: { contract: Contract; onClick: () => void }) {
   const totalPot = contract.makerStake + contract.takerStake
   const side = contract.role === 'maker' ? contract.side : (contract.side === 'YES' ? 'NO' : 'YES')
+  const { label, color } = contract.status === 'resolved'
+    ? resolvedLabel(contract)
+    : { label: STATUS_LABEL[contract.status] ?? contract.status, color: STATUS_COLOR[contract.status] ?? 'text-white/40 bg-white/5' }
 
   return (
     <button
@@ -46,8 +59,8 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium leading-snug flex-1 line-clamp-1">{contract.marketQuestion}</p>
-        <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${STATUS_COLOR[contract.status] ?? 'text-white/40 bg-white/5'}`}>
-          {STATUS_LABEL[contract.status] ?? contract.status}
+        <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${color}`}>
+          {label}
         </span>
       </div>
       <div className="flex items-center justify-between mt-2 text-xs text-white/30">
@@ -67,6 +80,7 @@ export default function InboxPage() {
 
   const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? []
   useWatchFunding(contracts)
+  useWatchResolution(contracts)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null

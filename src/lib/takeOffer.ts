@@ -46,7 +46,7 @@ export async function sendTakeRequest(
     id: offer.eventId,
     role: 'taker',
     status: 'awaiting_psbt',
-    side: offer.side === 'YES' ? 'NO' : 'YES',
+    side: offer.side,
     marketId: market.id,
     marketQuestion: market.question,
     oraclePubkey: market.pubkey,
