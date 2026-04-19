@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type Contract } from '../../db'
-import { claimFunding } from '../../lib/claimFunding'
+import { claimFunding } from '../../lib/spend'
 import { useElectrum } from '../../hooks/useElectrum'
 import { useWallet } from '../../hooks/useWallet'
 

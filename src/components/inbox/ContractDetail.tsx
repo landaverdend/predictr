@@ -4,8 +4,7 @@ import { Field } from './Field'
 import { AcceptTakerModal } from './AcceptTakerModal'
 import { ClaimModal } from './ClaimModal'
 import { useElectrum } from '../../hooks/useElectrum'
-import { signAndBroadcastFunding } from '../../lib/signFunding'
-import { refundFunding } from '../../lib/refundFunding'
+import { signAndBroadcastFunding, refundFunding } from '../../lib/spend'
 import { REFUND_DELAY } from '../../lib/utils'
 
 const STATUS_LABEL: Record<string, string> = {
