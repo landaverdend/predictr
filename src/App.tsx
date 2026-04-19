@@ -5,6 +5,7 @@ import MarketsPage from './pages/MarketsPage'
 import OraclePage from './pages/OraclePage'
 import InboxPage from './pages/InboxPage'
 import WalletPage from './pages/WalletPage'
+import SettingsPage from './pages/SettingsPage'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
             <Route path="/inbox" element={<Navigate to="/contracts" replace />} />
             <Route path="/contracts" element={<InboxPage />} />
             <Route path="/wallet" element={<WalletPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Routes>
         </div>
       </RelayProvider>

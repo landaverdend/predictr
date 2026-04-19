@@ -1,28 +1,24 @@
 @import "tailwindcss";
 
 @theme {
-  /* ── backgrounds (light cream / lavender) ─────────────────── */
-  --color-base:     rgb(230, 214, 179);   /* very light lavender-cream page bg  */
-  --color-surface:  #faf8ff;   /* near-white with purple tint — cards */
-  --color-elevated: #ede6f7;   /* light lavender — headers, hover     */
+  /* ── backgrounds (dark purple, Polymarket-style) ─────────── */
+  --color-base:     #0f0c1d;   /* near-black with deep purple tint   */
+  --color-surface:  #18152e;   /* cards, panels, modals              */
+  --color-elevated: #211e3a;   /* table headers, hover rows          */
+  --color-navbar:   #0b0917;   /* slightly darker than base          */
 
-
-  --color-navbar: rgb(137, 127, 255);
-
-
-
-  /* ── brand (nostr violet) ────────────────────────────────── */
-  --color-brand:       #240d40;   /* deep violet — CTAs, active links */
-  --color-brand-light: #7c3aed;   /* slightly lighter violet          */
-  --color-brand-dim:   #ede9fe;   /* barely-there lavender for tints  */
+  /* ── brand (lavender) ───────────────────────────────────── */
+  --color-brand:       #a78bfa;   /* lavender — CTAs, active links    */
+  --color-brand-light: #c4b5fd;   /* lighter lavender — hover states  */
+  --color-brand-dim:   #2d1f5e;   /* muted lavender — subtle bg tints */
 
   /* ── text ────────────────────────────────────────────────── */
-  --color-ink: #1e1338;   /* dark purple-black — main text */
+  --color-ink: #ffffff;   /* white — use /40, /30 etc. for muted */
 
   /* ── semantic ───────────────────────────────────────────── */
-  --color-positive: #15803d;   /* dark green  — wins, success   */
-  --color-negative: #b91c1c;   /* dark red    — losses, errors  */
-  --color-caution:  #92400e;   /* dark amber  — pending, action */
+  --color-positive: #4ade80;   /* green-400  — wins, success   */
+  --color-negative: #f87171;   /* red-400    — losses, errors  */
+  --color-caution:  #fbbf24;   /* amber-400  — pending, action */
 }
 
 @layer base {
