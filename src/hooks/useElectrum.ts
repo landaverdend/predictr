@@ -1,27 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ElectrumWS } from '../lib/electrum'
 
 const ELECTRUM_URL = 'ws://nigiri.kratom.io:5050/electrum'
 
 export function useElectrum() {
-  const clientRef = useRef<ElectrumWS | null>(null)
-  const [ready, setReady] = useState(false)
+  const [client, setClient] = useState<ElectrumWS | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    const client = new ElectrumWS(ELECTRUM_URL)
-    clientRef.current = client
+    const instance = new ElectrumWS(ELECTRUM_URL)
 
-    client.connect()
-      .then(() => { setReady(true); setError(null) })
-      .catch(e => { setError(e.message); setReady(false) })
+    instance.connect()
+      .then(() => { setClient(instance); setError(null) })
+      .catch(e => setError(e.message))
 
     return () => {
-      client.close()
-      clientRef.current = null
-      setReady(false)
+      instance.close()
+      setClient(null)
     }
   }, [])
 
-  return { clientRef, client: clientRef.current, ready, error }
+  return { client, error }
 }

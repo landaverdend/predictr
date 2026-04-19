@@ -36,13 +36,11 @@ function KeyRow({ walletKey, balance }: { walletKey: WalletKey; balance: number 
 
 export default function WalletPage() {
   const keys = useLiveQuery(() => db.wallet.toArray().then(ks => ks.sort((a, b) => b.createdAt - a.createdAt)), [])
-  const { clientRef, ready } = useElectrum()
+  const { client } = useElectrum()
   const [balances, setBalances] = useState<Record<string, number>>({})
 
   useEffect(() => {
-    if (!keys?.length || !ready) return
-    const client = clientRef.current
-    if (!client) return
+    if (!keys?.length || !client) return
 
     keys.forEach(async k => {
       try {
@@ -50,7 +48,7 @@ export default function WalletPage() {
         setBalances(prev => ({ ...prev, [k.address]: confirmed + unconfirmed }))
       } catch { /* ignore */ }
     })
-  }, [keys, ready])
+  }, [keys, client])
 
   function handleGenerate() {
     db.wallet.put(generateKey())

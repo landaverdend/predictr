@@ -22,12 +22,16 @@ function OfferRow({ offer, onTake }: { offer: Offer; onTake: () => void }) {
       <div className="flex items-center gap-5 text-xs text-white/30">
         <span className="font-mono hidden sm:block">{truncate(offer.makerPubkey)}</span>
         <span>{timeAgo(offer.createdAt)}</span>
-        <button
-          onClick={onTake}
-          className="border border-white/20 rounded px-3 py-1.5 hover:bg-white/5 transition-colors text-white/60"
-        >
-          take
-        </button>
+        {offer.status === 'filled' ? (
+          <span className="text-xs text-white/20 px-3 py-1.5">filled</span>
+        ) : (
+          <button
+            onClick={onTake}
+            className="border border-white/20 rounded px-3 py-1.5 hover:bg-white/5 transition-colors text-white/60"
+          >
+            take
+          </button>
+        )}
       </div>
     </div>
   )

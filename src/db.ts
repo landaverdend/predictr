@@ -30,6 +30,9 @@ export interface Contract {
   noHash: string
   resolutionBlockheight: number
 
+  // offer identity
+  offerDTag?: string              // d-tag of the Kind 30051 offer event (maker only)
+
   // counterparty
   counterpartyPubkey: string
 
@@ -129,6 +132,13 @@ class NostrDlcDb extends Dexie {
       oracleMarkets: 'id, createdAt',
     })
     this.version(5).stores({
+      contracts: 'id, role, status, marketId, createdAt, updatedAt',
+      messages: 'id, contractId, createdAt',
+      keys: 'id',
+      wallet: 'id',
+      oracleMarkets: 'id, createdAt',
+    })
+    this.version(6).stores({
       contracts: 'id, role, status, marketId, createdAt, updatedAt',
       messages: 'id, contractId, createdAt',
       keys: 'id',

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Contract } from '../db'
 import { ContractDetail } from '../components/inbox/ContractDetail'
 import { useDMs } from '../hooks/useDMs'
+import { useWatchFunding } from '../hooks/useWatchFunding'
 
 const STATUS_LABEL: Record<string, string> = {
   offer_pending: 'open',
@@ -65,6 +66,7 @@ export default function InboxPage() {
   useDMs()
 
   const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? []
+  useWatchFunding(contracts)
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null

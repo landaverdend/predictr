@@ -21,6 +21,7 @@ export type Offer = {
   side: 'YES' | 'NO'
   makerStake: number
   confidence: number
+  status: string    // 'open' | 'filled' | etc.
   createdAt: number
 }
 
@@ -53,6 +54,7 @@ export function parseOffer(event: NostrEvent): Offer {
     side: tag(event, 'side') as 'YES' | 'NO',
     makerStake: parseInt(tag(event, 'maker_stake'), 10),
     confidence: parseInt(tag(event, 'confidence'), 10),
+    status: tag(event, 'status') || 'open',
     createdAt: event.created_at * 1000,
   }
 }

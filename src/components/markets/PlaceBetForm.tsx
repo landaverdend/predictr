@@ -65,6 +65,7 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
         yesHash: market.yesHash,
         noHash: market.noHash,
         resolutionBlockheight: market.resolutionBlockheight,
+        offerDTag: offerId,
         counterpartyPubkey: '',
         makerStake: makerStakeNum,
         confidence: confidenceNum,

@@ -14,14 +14,12 @@ export type WalletUTXO = {
 
 export function useWallet() {
   const keys = useLiveQuery(() => db.wallet.toArray(), [])
-  const { clientRef, ready } = useElectrum()
+  const { client } = useElectrum()
   const [utxosByAddress, setUtxosByAddress] = useState<Record<string, ElectrumUTXO[]>>({})
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!keys?.length || !ready) return
-    const client = clientRef.current
-    if (!client) return
+    if (!keys?.length || !client) return
 
     setLoading(true)
     Promise.all(keys.map(async k => {
@@ -31,7 +29,7 @@ export function useWallet() {
       setUtxosByAddress(Object.fromEntries(results))
       setLoading(false)
     })
-  }, [keys, ready])
+  }, [keys, client])
 
   function allUtxos(): WalletUTXO[] {
     if (!keys) return []
@@ -49,5 +47,5 @@ export function useWallet() {
 
   const totalBalance = Object.values(utxosByAddress).flat().reduce((s, u) => s + u.value, 0)
 
-  return { keys: keys ?? [], utxosByAddress, allUtxos, pickUtxo, totalBalance, loading, ready }
+  return { keys: keys ?? [], utxosByAddress, allUtxos, pickUtxo, totalBalance, loading }
 }

@@ -34,10 +34,9 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   const [signError, setSignError] = useState('')
   const [refunding, setRefunding] = useState(false)
   const [refundError, setRefundError] = useState('')
-  const { clientRef } = useElectrum()
+  const { client } = useElectrum()
 
   async function handleSignAndBroadcast() {
-    const client = clientRef.current
     if (!client) { setSignError('electrum not connected'); return }
     setSigning(true)
     setSignError('')
@@ -51,7 +50,6 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   }
 
   async function handleRefund() {
-    const client = clientRef.current
     if (!client) { setRefundError('electrum not connected'); return }
     setRefunding(true)
     setRefundError('')
