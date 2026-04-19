@@ -57,6 +57,7 @@ export interface Contract {
   // settlement
   outcome?: ContractSide
   winningPreimage?: string
+  claimTxid?: string
 
   createdAt: number               // unix ms
   updatedAt: number
@@ -139,6 +140,13 @@ class NostrDlcDb extends Dexie {
       oracleMarkets: 'id, createdAt',
     })
     this.version(6).stores({
+      contracts: 'id, role, status, marketId, createdAt, updatedAt',
+      messages: 'id, contractId, createdAt',
+      keys: 'id',
+      wallet: 'id',
+      oracleMarkets: 'id, createdAt',
+    })
+    this.version(7).stores({
       contracts: 'id, role, status, marketId, createdAt, updatedAt',
       messages: 'id, contractId, createdAt',
       keys: 'id',

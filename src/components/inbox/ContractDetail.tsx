@@ -2,9 +2,11 @@ import { useState } from 'react'
 import { type Contract } from '../../db'
 import { Field } from './Field'
 import { AcceptTakerModal } from './AcceptTakerModal'
+import { ClaimModal } from './ClaimModal'
 import { useElectrum } from '../../hooks/useElectrum'
 import { signAndBroadcastFunding } from '../../lib/signFunding'
 import { refundFunding } from '../../lib/refundFunding'
+import { REFUND_DELAY } from '../../lib/utils'
 
 const STATUS_LABEL: Record<string, string> = {
   offer_pending: 'open',
@@ -30,6 +32,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export function ContractDetail({ contract, onBack }: { contract: Contract; onBack: () => void }) {
   const [showAccept, setShowAccept] = useState(false)
+  const [showClaim, setShowClaim] = useState(false)
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState('')
   const [refunding, setRefunding] = useState(false)
@@ -190,6 +193,30 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
             {signError && <p className="text-xs text-red-400">{signError}</p>}
           </div>
         )}
+        {/* Claim winnings */}
+        {won === true && !contract.claimTxid && (
+          <div className="border border-green-400/20 bg-green-400/5 rounded-lg p-5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-green-400 font-medium uppercase tracking-wider">winnings ready</p>
+                <p className="text-xs text-white/30 mt-0.5">{(contract.makerStake + contract.takerStake).toLocaleString()} sats available</p>
+              </div>
+              <button
+                onClick={() => setShowClaim(true)}
+                className="px-3 py-1.5 text-xs font-medium text-black bg-green-400 rounded-lg hover:bg-green-300 transition-colors"
+              >
+                claim
+              </button>
+            </div>
+          </div>
+        )}
+        {won === true && contract.claimTxid && (
+          <div className="border border-white/10 rounded-lg p-4 text-xs space-y-1">
+            <p className="text-white/40 uppercase tracking-wider">claimed</p>
+            <p className="font-mono text-white/40 break-all text-[10px]">{contract.claimTxid}</p>
+          </div>
+        )}
+
         {/* Refund */}
         {contract.status === 'funded' && (
           <div className="border border-white/10 rounded-lg p-5 space-y-3">
@@ -197,7 +224,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
               <div>
                 <p className="text-xs text-white/50 font-medium uppercase tracking-wider">refund</p>
                 <p className="text-xs text-white/30 mt-0.5">
-                  spendable after block {(contract.resolutionBlockheight + 144).toLocaleString()}
+                  spendable after block {(contract.resolutionBlockheight + REFUND_DELAY).toLocaleString()}
                 </p>
               </div>
               <button
@@ -215,6 +242,9 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
 
       {showAccept && (
         <AcceptTakerModal contract={contract} onClose={() => setShowAccept(false)} />
+      )}
+      {showClaim && (
+        <ClaimModal contract={contract} onClose={() => setShowClaim(false)} />
       )}
     </>
   )

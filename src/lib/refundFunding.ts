@@ -3,15 +3,9 @@ import type { Contract } from '../db'
 import { db } from '../db'
 import { buildContractOutputScripts, REGTEST } from './contract'
 import type { ElectrumWS } from './electrum'
+import { hexToBytes, REFUND_DELAY } from './utils'
 
 const FEE = 1000
-
-function hexToBytes(hex: string): Uint8Array {
-  const arr = new Uint8Array(hex.length / 2)
-  for (let i = 0; i < hex.length; i += 2)
-    arr[i / 2] = parseInt(hex.slice(i, i + 2), 16)
-  return arr
-}
 
 // Leaf order after taprootWalkTree on [yesLeaf, noLeaf, cltvLeaf]: [no, cltv, yes]
 // So tapLeafScript[1] is always the CLTV leaf for our fixed tree structure.
@@ -40,7 +34,7 @@ export async function refundFunding(contract: Contract, electrum: ElectrumWS): P
   const output = isMaker ? makerOutput : takerOutput
   const stake = isMaker ? contract.makerStake : contract.takerStake
   const outputIdx = isMaker ? 0 : 1
-  const locktime = contract.resolutionBlockheight + 144
+  const locktime = contract.resolutionBlockheight + REFUND_DELAY
 
   const cltvLeaf = output.tapLeafScript![CLTV_LEAF_IDX]
 

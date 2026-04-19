@@ -4,13 +4,7 @@ import type { Contract } from '../db'
 import { buildFundingTx } from './contract'
 import type { WalletUTXO } from '../hooks/useWallet'
 import { db } from '../db'
-
-function hexToBytes(hex: string): Uint8Array {
-  const arr = new Uint8Array(hex.length / 2)
-  for (let i = 0; i < hex.length; i += 2)
-    arr[i / 2] = parseInt(hex.slice(i, i + 2), 16)
-  return arr
-}
+import { hexToBytes } from './utils'
 
 export async function sendFundingPsbt(
   publish: (event: NostrEvent) => Promise<void>,

@@ -1,4 +1,5 @@
 import { Script, p2tr, TAPROOT_UNSPENDABLE_KEY, Transaction, SigHash } from '@scure/btc-signer'
+import { hexToBytes, REFUND_DELAY } from './utils'
 
 type Network = { bech32: string; pubKeyHash: number; scriptHash: number; wif: number }
 
@@ -12,19 +13,12 @@ export type ContractParams = {
   resolutionBlockheight: number
 }
 
-function hex(s: string): Uint8Array {
-  const arr = new Uint8Array(s.length / 2)
-  for (let i = 0; i < s.length; i += 2)
-    arr[i / 2] = parseInt(s.slice(i, i + 2), 16)
-  return arr
-}
-
 export function buildContractOutputScripts(p: ContractParams, network: Network = REGTEST) {
-  const yh = hex(p.yesHash)
-  const nh = hex(p.noHash)
-  const mk = hex(p.makerPubkey)
-  const tk = hex(p.takerPubkey)
-  const locktime = p.resolutionBlockheight + 144
+  const yh = hexToBytes(p.yesHash)
+  const nh = hexToBytes(p.noHash)
+  const mk = hexToBytes(p.makerPubkey)
+  const tk = hexToBytes(p.takerPubkey)
+  const locktime = p.resolutionBlockheight + REFUND_DELAY
 
   const yesLeaf = { script: Script.encode(['SHA256', yh, 'EQUALVERIFY', mk, 'CHECKSIG']) }
   const noLeaf = { script: Script.encode(['SHA256', nh, 'EQUALVERIFY', tk, 'CHECKSIG']) }
