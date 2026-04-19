@@ -22,12 +22,12 @@ function generateKey(): WalletKey {
 
 function KeyRow({ walletKey, balance }: { walletKey: WalletKey; balance: number | undefined }) {
   return (
-    <tr className="border-t border-white/5 hover:bg-white/[0.02] transition-colors">
-      <td className="px-4 py-3 font-mono text-xs text-white/70 break-all">{walletKey.address}</td>
-      <td className="px-4 py-3 font-mono text-xs text-white/70 text-right whitespace-nowrap">
-        {balance === undefined ? <span className="text-white/20">…</span> : `${balance.toLocaleString()} sats`}
+    <tr className="border-t border-ink/5 hover:bg-elevated transition-colors">
+      <td className="px-4 py-3 font-mono text-xs text-ink/70 break-all">{walletKey.address}</td>
+      <td className="px-4 py-3 font-mono text-xs text-ink/70 text-right whitespace-nowrap">
+        {balance === undefined ? <span className="text-ink/20">…</span> : `${balance.toLocaleString()} sats`}
       </td>
-      <td className="px-4 py-3 font-mono text-xs text-white/30 text-right whitespace-nowrap">
+      <td className="px-4 py-3 font-mono text-xs text-ink/30 text-right whitespace-nowrap">
         {new Date(walletKey.createdAt).toLocaleDateString()}
       </td>
     </tr>
@@ -59,34 +59,34 @@ export default function WalletPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold mb-1">wallet</h1>
-          <p className="text-white/40 text-sm">in-app bitcoin keypairs for signing contracts</p>
+          <p className="text-ink/40 text-sm">in-app bitcoin keypairs for signing contracts</p>
         </div>
         <button
           onClick={handleGenerate}
-          className="px-4 py-2 text-sm font-medium bg-white text-black rounded-lg hover:bg-white/90 transition-colors"
+          className="px-4 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-light transition-colors"
         >
           + new address
         </button>
       </div>
 
       {keys === undefined && (
-        <p className="text-xs text-white/30">loading…</p>
+        <p className="text-xs text-ink/30">loading…</p>
       )}
 
       {keys?.length === 0 && (
-        <div className="border border-white/10 rounded-xl p-10 text-center text-white/30 text-sm">
+        <div className="border border-ink/10 rounded-xl p-10 text-center text-ink/30 text-sm">
           no addresses yet — generate one to get started
         </div>
       )}
 
       {keys && keys.length > 0 && (
-        <div className="border border-white/10 rounded-xl overflow-hidden">
+        <div className="border border-ink/10 rounded-xl overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="bg-white/5">
-                <th className="px-4 py-2.5 text-left text-xs text-white/30 uppercase tracking-wider font-normal">address</th>
-                <th className="px-4 py-2.5 text-right text-xs text-white/30 uppercase tracking-wider font-normal">balance</th>
-                <th className="px-4 py-2.5 text-right text-xs text-white/30 uppercase tracking-wider font-normal">created</th>
+              <tr className="bg-elevated">
+                <th className="px-4 py-2.5 text-left text-xs text-ink/30 uppercase tracking-wider font-normal">address</th>
+                <th className="px-4 py-2.5 text-right text-xs text-ink/30 uppercase tracking-wider font-normal">balance</th>
+                <th className="px-4 py-2.5 text-right text-xs text-ink/30 uppercase tracking-wider font-normal">created</th>
               </tr>
             </thead>
             <tbody>
@@ -96,7 +96,7 @@ export default function WalletPage() {
         </div>
       )}
 
-      <p className="text-xs text-red-400/50">
+      <p className="text-xs text-negative/50">
         private keys stored unencrypted in IndexedDB — regtest only
       </p>
     </main>

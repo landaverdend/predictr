@@ -83,18 +83,18 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onDone}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-base/70 backdrop-blur-sm" />
       <form
         onSubmit={handleSubmit}
         onClick={e => e.stopPropagation()}
-        className="relative w-full max-w-sm bg-zinc-900 border border-white/10 rounded-xl p-7 space-y-6"
+        className="relative w-full max-w-sm bg-surface border border-ink/10 rounded-xl p-7 space-y-6"
       >
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium">place bet</p>
-          <button type="button" onClick={onDone} className="text-white/30 hover:text-white/60 transition-colors text-xl leading-none">×</button>
+          <button type="button" onClick={onDone} className="text-ink/30 hover:text-ink/60 transition-colors text-xl leading-none">×</button>
         </div>
 
-        <p className="text-xs text-white/40 leading-relaxed">{market.question}</p>
+        <p className="text-xs text-ink/40 leading-relaxed">{market.question}</p>
 
         <div className="flex gap-2">
           {(['YES', 'NO'] as const).map(s => (
@@ -104,8 +104,8 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
               onClick={() => setSide(s)}
               className={`flex-1 py-3 rounded-lg text-sm font-medium transition-colors ${
                 side === s
-                  ? s === 'YES' ? 'bg-green-400/15 text-green-400 border border-green-400/30' : 'bg-red-400/15 text-red-400 border border-red-400/30'
-                  : 'border border-white/10 text-white/30 hover:bg-white/5'
+                  ? s === 'YES' ? 'bg-positive/15 text-positive border border-positive/30' : 'bg-negative/15 text-negative border border-negative/30'
+                  : 'border border-ink/10 text-ink/30 hover:bg-ink/5'
               }`}
             >
               {s}
@@ -114,21 +114,21 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs text-white/40">your stake (sats)</label>
+          <label className="text-xs text-ink/40">your stake (sats)</label>
           <input
             type="number"
             min="1"
             placeholder="100000"
             value={makerStake}
             onChange={e => setMakerStake(e.target.value === '' ? '' : String(Math.max(1, parseInt(e.target.value, 10))))}
-            className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 text-sm font-mono placeholder-white/20 focus:outline-none focus:border-white/30 transition-colors"
+            className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
           />
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-white/40">confidence</label>
-            <span className="text-xs font-mono text-white/60">{confidenceNum}%</span>
+            <label className="text-xs text-ink/40">confidence</label>
+            <span className="text-xs font-mono text-ink/60">{confidenceNum}%</span>
           </div>
           <input
             type="range"
@@ -136,41 +136,41 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
             max="99"
             value={confidenceNum}
             onChange={e => setConfidence(e.target.value)}
-            className="w-full accent-white"
+            className="w-full accent-brand"
           />
-          <div className="flex justify-between text-xs text-white/20">
+          <div className="flex justify-between text-xs text-ink/20">
             <span>1%</span>
             <span>50%</span>
             <span>99%</span>
           </div>
         </div>
 
-        <div className="bg-white/5 rounded-lg px-4 py-4 space-y-2 text-xs">
+        <div className="bg-ink/5 rounded-lg px-4 py-4 space-y-2 text-xs">
           <div className="flex justify-between">
-            <span className="text-white/40">taker puts up</span>
-            <span className="font-mono text-white/70">{impliedTakerStake > 0 ? `${impliedTakerStake.toLocaleString()} sats` : '—'}</span>
+            <span className="text-ink/40">taker puts up</span>
+            <span className="font-mono text-ink/70">{impliedTakerStake > 0 ? `${impliedTakerStake.toLocaleString()} sats` : '—'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-white/40">winner takes</span>
-            <span className="font-mono text-white/70">{impliedTakerStake > 0 ? `${(makerStakeNum + impliedTakerStake).toLocaleString()} sats` : '—'}</span>
+            <span className="text-ink/40">winner takes</span>
+            <span className="font-mono text-ink/70">{impliedTakerStake > 0 ? `${(makerStakeNum + impliedTakerStake).toLocaleString()} sats` : '—'}</span>
           </div>
         </div>
 
-        {status === 'error' && <p className="text-xs text-red-400">{error}</p>}
-        {status === 'done' && <p className="text-xs text-green-400">offer posted — takers will DM you</p>}
+        {status === 'error' && <p className="text-xs text-negative">{error}</p>}
+        {status === 'done' && <p className="text-xs text-positive">offer posted — takers will DM you</p>}
 
         <div className="flex gap-2">
           <button
             type="button"
             onClick={onDone}
-            className="flex-1 py-3 rounded-lg text-sm border border-white/10 text-white/40 hover:bg-white/5 transition-colors"
+            className="flex-1 py-3 rounded-lg text-sm border border-ink/10 text-ink/40 hover:bg-ink/5 transition-colors"
           >
             cancel
           </button>
           <button
             type="submit"
             disabled={!makerStake || status === 'publishing' || status === 'done'}
-            className="flex-1 py-3 rounded-lg text-sm font-medium bg-white text-black hover:bg-white/90 disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+            className="flex-1 py-3 rounded-lg text-sm font-medium bg-brand text-white hover:bg-brand-light disabled:opacity-20 disabled:cursor-not-allowed transition-all"
           >
             {status === 'publishing' ? 'posting...' : 'post offer'}
           </button>

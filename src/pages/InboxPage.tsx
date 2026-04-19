@@ -7,25 +7,25 @@ import { useWatchFunding } from '../hooks/useWatchFunding'
 import { useWatchResolution } from '../hooks/useWatchResolution'
 
 const STATUS_LABEL: Record<string, string> = {
-  offer_pending: 'open',
-  take_received: 'action needed',
-  psbt_sent: 'psbt sent',
-  awaiting_psbt: 'pending maker response',
-  funded: 'funded',
-  resolved: 'resolved',
-  refunded: 'refunded',
-  cancelled: 'cancelled',
+  offer_pending:  'open',
+  take_received:  'action needed',
+  psbt_sent:      'psbt sent',
+  awaiting_psbt:  'pending maker response',
+  funded:         'funded',
+  resolved:       'resolved',
+  refunded:       'refunded',
+  cancelled:      'cancelled',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  offer_pending: 'text-white/40 bg-white/5',
-  take_received: 'text-yellow-400 bg-yellow-400/10',
-  psbt_sent: 'text-blue-400 bg-blue-400/10',
-  awaiting_psbt: 'text-yellow-400 bg-yellow-400/10',
-  funded: 'text-green-400 bg-green-400/10',
-  resolved: 'text-green-400 bg-green-400/10',
-  refunded: 'text-white/50 bg-white/5',
-  cancelled: 'text-white/30 bg-white/5',
+  offer_pending:  'text-ink/40 bg-ink/5',
+  take_received:  'text-caution bg-caution/10',
+  psbt_sent:      'text-brand bg-brand/10',
+  awaiting_psbt:  'text-caution bg-caution/10',
+  funded:         'text-positive bg-positive/10',
+  resolved:       'text-positive bg-positive/10',
+  refunded:       'text-ink/50 bg-ink/5',
+  cancelled:      'text-ink/30 bg-ink/5',
 }
 
 function timeAgo(ts: number) {
@@ -37,12 +37,12 @@ function timeAgo(ts: number) {
 }
 
 function resolvedLabel(contract: Contract): { label: string; color: string } {
-  if (contract.status !== 'resolved' || !contract.outcome) return { label: 'resolved', color: 'text-white/40 bg-white/5' }
+  if (contract.status !== 'resolved' || !contract.outcome) return { label: 'resolved', color: 'text-ink/40 bg-ink/5' }
   const ourSide = contract.role === 'maker' ? contract.side : (contract.side === 'YES' ? 'NO' : 'YES')
   const won = ourSide === contract.outcome
   return won
-    ? { label: 'won', color: 'text-green-400 bg-green-400/10' }
-    : { label: 'lost', color: 'text-red-400 bg-red-400/10' }
+    ? { label: 'won', color: 'text-positive bg-positive/10' }
+    : { label: 'lost', color: 'text-negative bg-negative/10' }
 }
 
 function ContractRow({ contract, onClick }: { contract: Contract; onClick: () => void }) {
@@ -50,12 +50,12 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
   const side = contract.role === 'maker' ? contract.side : (contract.side === 'YES' ? 'NO' : 'YES')
   const { label, color } = contract.status === 'resolved'
     ? resolvedLabel(contract)
-    : { label: STATUS_LABEL[contract.status] ?? contract.status, color: STATUS_COLOR[contract.status] ?? 'text-white/40 bg-white/5' }
+    : { label: STATUS_LABEL[contract.status] ?? contract.status, color: STATUS_COLOR[contract.status] ?? 'text-ink/40 bg-ink/5' }
 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left border border-white/10 rounded-lg px-4 py-3.5 hover:border-white/25 transition-colors"
+      className="w-full text-left border border-ink/10 rounded-lg px-4 py-3.5 hover:border-ink/25 transition-colors"
     >
       <div className="flex items-start justify-between gap-3">
         <p className="text-sm font-medium leading-snug flex-1 line-clamp-1">{contract.marketQuestion}</p>
@@ -63,9 +63,9 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
           {label}
         </span>
       </div>
-      <div className="flex items-center justify-between mt-2 text-xs text-white/30">
+      <div className="flex items-center justify-between mt-2 text-xs text-ink/30">
         <div className="flex items-center gap-3">
-          <span className={`font-medium ${side === 'YES' ? 'text-green-400/70' : 'text-red-400/70'}`}>{side}</span>
+          <span className={`font-medium ${side === 'YES' ? 'text-positive/70' : 'text-negative/70'}`}>{side}</span>
           <span>{contract.role}</span>
           <span className="font-mono">{totalPot.toLocaleString()} sats pot</span>
         </div>
@@ -97,11 +97,11 @@ export default function InboxPage() {
     <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full">
       <div className="mb-8">
         <h1 className="text-2xl font-bold mb-1">contracts</h1>
-        <p className="text-white/40 text-sm">your active and pending contracts</p>
+        <p className="text-ink/40 text-sm">your active and pending contracts</p>
       </div>
 
       {contracts.length === 0 ? (
-        <div className="text-center text-white/30 text-sm py-20">
+        <div className="text-center text-ink/30 text-sm py-20">
           no contracts yet — post an offer or take one
         </div>
       ) : (

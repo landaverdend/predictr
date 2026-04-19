@@ -10,7 +10,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <RelayProvider url="ws://kratomstr.io:7777">
-        <div className="min-h-screen bg-black text-white flex flex-col">
+        <div className="min-h-screen bg-base text-ink flex flex-col">
           <Navbar />
           <Routes>
             <Route path="/" element={<MarketsPage />} />

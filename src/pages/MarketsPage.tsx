@@ -50,10 +50,10 @@ export default function MarketsPage() {
         <>
           <div className="mb-10">
             <h1 className="text-2xl font-bold mb-2">markets</h1>
-            <p className="text-white/40 text-sm">open bets on nostr</p>
+            <p className="text-ink/40 text-sm">open bets on nostr</p>
           </div>
           {Object.values(markets).length === 0 ? (
-            <div className="text-center text-white/30 text-sm py-24">
+            <div className="text-center text-ink/30 text-sm py-24">
               no markets found on relay
             </div>
           ) : (

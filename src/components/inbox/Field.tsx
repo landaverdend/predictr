@@ -8,8 +8,8 @@ export function Field({ label, children, mono = false, span2 = false }: {
 }) {
   return (
     <div className={`space-y-0.5 ${span2 ? 'col-span-2' : ''}`}>
-      <p className="text-white/30">{label}</p>
-      <div className={`text-white/80 text-xs ${mono ? 'font-mono' : ''}`}>{children}</div>
+      <p className="text-ink/30">{label}</p>
+      <div className={`text-ink/80 text-xs ${mono ? 'font-mono' : ''}`}>{children}</div>
     </div>
   )
 }

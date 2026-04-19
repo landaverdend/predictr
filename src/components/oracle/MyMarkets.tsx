@@ -7,7 +7,7 @@ export function MyMarkets() {
 
   if (markets.length === 0) {
     return (
-      <div className="text-center text-white/30 text-sm py-20">
+      <div className="text-center text-ink/30 text-sm py-20">
         no markets yet — create one
       </div>
     )

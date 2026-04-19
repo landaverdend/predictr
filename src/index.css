@@ -1,1 +1,33 @@
 @import "tailwindcss";
+
+@theme {
+  /* ── backgrounds (light cream / lavender) ─────────────────── */
+  --color-base:     rgb(230, 214, 179);   /* very light lavender-cream page bg  */
+  --color-surface:  #faf8ff;   /* near-white with purple tint — cards */
+  --color-elevated: #ede6f7;   /* light lavender — headers, hover     */
+
+
+  --color-navbar: rgb(137, 127, 255);
+
+
+
+  /* ── brand (nostr violet) ────────────────────────────────── */
+  --color-brand:       #240d40;   /* deep violet — CTAs, active links */
+  --color-brand-light: #7c3aed;   /* slightly lighter violet          */
+  --color-brand-dim:   #ede9fe;   /* barely-there lavender for tints  */
+
+  /* ── text ────────────────────────────────────────────────── */
+  --color-ink: #1e1338;   /* dark purple-black — main text */
+
+  /* ── semantic ───────────────────────────────────────────── */
+  --color-positive: #15803d;   /* dark green  — wins, success   */
+  --color-negative: #b91c1c;   /* dark red    — losses, errors  */
+  --color-caution:  #92400e;   /* dark amber  — pending, action */
+}
+
+@layer base {
+  html, body {
+    background-color: var(--color-base);
+    color: var(--color-ink);
+  }
+}
