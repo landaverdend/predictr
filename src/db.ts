@@ -54,6 +54,9 @@ export interface Contract {
   fundingPsbt?: string            // base64
   fundingTxid?: string
 
+  // ui state
+  seenAt?: number                 // set when user opens the detail view; undefined = unseen (badge shown)
+
   // settlement
   outcome?: ContractSide
   winningPreimage?: string

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type Contract } from '../../db'
+import { type Contract, db } from '../../db'
 import { Field } from './Field'
 import { AcceptTakerModal } from './AcceptTakerModal'
 import { ClaimModal } from './ClaimModal'
@@ -42,6 +42,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   const [signError, setSignError] = useState('')
   const [refunding, setRefunding] = useState(false)
   const [refundError, setRefundError] = useState('')
+  const [refusing, setRefusing] = useState(false)
   const { client } = useElectrum()
 
   async function handleSignAndBroadcast() {
@@ -54,6 +55,16 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
       setSignError(e instanceof Error ? e.message : 'failed')
     } finally {
       setSigning(false)
+    }
+  }
+
+  async function handleRefuse() {
+    if (!confirm('Refuse this offer? The contract will be cancelled.')) return
+    setRefusing(true)
+    try {
+      await db.contracts.update(contract.id, { status: 'cancelled', updatedAt: Date.now() })
+    } finally {
+      setRefusing(false)
     }
   }
 
@@ -139,12 +150,21 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
           <div className="border border-caution/20 bg-caution/5 rounded-lg p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-caution font-medium uppercase tracking-wider">taker request</p>
-              <button
-                onClick={() => setShowAccept(true)}
-                className="px-3 py-1.5 text-xs font-medium text-white bg-positive rounded-lg hover:bg-positive/80 transition-colors"
-              >
-                accept
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRefuse}
+                  disabled={refusing}
+                  className="px-3 py-1.5 text-xs font-medium text-negative border border-negative/30 rounded-lg hover:bg-negative/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  refuse
+                </button>
+                <button
+                  onClick={() => setShowAccept(true)}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-positive rounded-lg hover:bg-positive/80 transition-colors"
+                >
+                  accept
+                </button>
+              </div>
             </div>
 
             <div>
@@ -192,13 +212,22 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
           <div className="border border-brand/20 bg-brand/5 rounded-lg p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-brand font-medium uppercase tracking-wider">funding psbt received</p>
-              <button
-                onClick={handleSignAndBroadcast}
-                disabled={signing}
-                className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand-light disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-              >
-                {signing ? 'broadcasting…' : 'sign & broadcast'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRefuse}
+                  disabled={refusing || signing}
+                  className="px-3 py-1.5 text-xs font-medium text-negative border border-negative/30 rounded-lg hover:bg-negative/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  refuse
+                </button>
+                <button
+                  onClick={handleSignAndBroadcast}
+                  disabled={signing || refusing}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand-light disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                >
+                  {signing ? 'broadcasting…' : 'sign & broadcast'}
+                </button>
+              </div>
             </div>
             <p className="font-mono text-[10px] text-ink/30 break-all">{contract.fundingPsbt.slice(0, 120)}…</p>
             {signError && <p className="text-xs text-negative">{signError}</p>}

@@ -85,6 +85,11 @@ export default function InboxPage() {
 
   const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null
 
+  async function openContract(id: string) {
+    await db.contracts.update(id, { seenAt: Date.now() })
+    setSelectedId(id)
+  }
+
   if (selected) {
     return (
       <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full">
@@ -107,7 +112,7 @@ export default function InboxPage() {
       ) : (
         <div className="space-y-2">
           {contracts.map(contract => (
-            <ContractRow key={contract.id} contract={contract} onClick={() => setSelectedId(contract.id)} />
+            <ContractRow key={contract.id} contract={contract} onClick={() => openContract(contract.id)} />
           ))}
         </div>
       )}

@@ -43,6 +43,7 @@ export function useDMs() {
               takerChangeAddress: msg.change_address as string,
               takerWalletPubkey: msg.taker_wallet_pubkey as string,
               updatedAt: now,
+              seenAt: undefined,
             })
           } else if (msg.type === 'psbt_offer') {
             const contract = await db.contracts.get(offerEventId)
@@ -54,6 +55,7 @@ export function useDMs() {
               fundingPsbt: msg.funding_psbt as string,
               makerWalletPubkey: msg.maker_wallet_pubkey as string,
               updatedAt: now,
+              seenAt: undefined,
             })
           }
 

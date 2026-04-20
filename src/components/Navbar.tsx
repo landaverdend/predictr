@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useRelayContext } from '../context/RelayContext'
 import { useNostrUser } from '../hooks/useNostrUser'
+import { useNavBadges } from '../hooks/useNavBadges'
+import NavBadge from './NavBadge'
 import { db } from '../db'
 
 const STATUS_COLOR = {
@@ -94,6 +96,7 @@ function UserMenu() {
 
 export default function Navbar() {
   const { status } = useRelayContext()
+  const badges = useNavBadges()
 
   return (
     <header className="border-b border-ink/10 px-6 py-3 flex items-center justify-between bg-navbar">
@@ -109,10 +112,11 @@ export default function Navbar() {
               to={to}
               end
               className={({ isActive }) =>
-                `text-sm transition-colors ${isActive ? 'text-ink font-medium' : 'text-ink/50 hover:text-ink/80'}`
+                `relative text-sm transition-colors ${isActive ? 'text-ink font-medium' : 'text-ink/50 hover:text-ink/80'}`
               }
             >
               {label}
+              <NavBadge count={badges[to] ?? 0} />
             </NavLink>
           ))}
         </nav>
