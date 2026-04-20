@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useRelayContext } from '../context/RelayContext'
+import { useElectrumContext, DEFAULT_ELECTRUM_URL } from '../context/ElectrumContext'
 import { db } from '../db'
 
 function RelayManager() {
@@ -121,6 +122,48 @@ function RelayManager() {
   )
 }
 
+function ElectrumManager() {
+  const { url, saveUrl, error } = useElectrumContext()
+  const [draft, setDraft] = useState(url)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => { setDraft(url) }, [url])
+
+  const isDirty = draft !== url
+
+  async function handleSave() {
+    setSaving(true)
+    try { await saveUrl(draft) } finally { setSaving(false) }
+  }
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && isDirty && handleSave()}
+          placeholder={DEFAULT_ELECTRUM_URL}
+          className="flex-1 bg-elevated border border-ink/10 rounded-lg px-4 py-2.5 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
+        />
+      </div>
+      {error && (
+        <p className="text-xs text-negative font-mono">{error}</p>
+      )}
+      <div className="flex justify-end pt-1 border-t border-ink/5">
+        <button
+          onClick={handleSave}
+          disabled={!isDirty || saving}
+          className="px-5 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-light disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        >
+          {saving ? 'saving…' : 'save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const user = useNostrUser()
 
@@ -178,6 +221,14 @@ export default function SettingsPage() {
           <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">relays</p>
         </div>
         <RelayManager />
+      </section>
+
+      {/* Electrum */}
+      <section className="border border-ink/10 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 bg-elevated border-b border-ink/5">
+          <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">electrum server</p>
+        </div>
+        <ElectrumManager />
       </section>
 
       {/* Data */}
