@@ -1,9 +1,11 @@
+import { useNavigate } from 'react-router-dom'
 import type { Market, Offer } from '../../lib/market'
 import { truncate, computeStats } from '../../lib/market'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { Avatar } from '../Avatar'
 
 function MarketCard({ market, offers, onSelect }: { market: Market; offers: Offer[]; onSelect: () => void }) {
+  const navigate = useNavigate()
   const stats = computeStats(offers)
 
   return (
@@ -14,10 +16,13 @@ function MarketCard({ market, offers, onSelect }: { market: Market; offers: Offe
       <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} />
       <div className="p-5 space-y-4">
         <p className="text-sm font-medium leading-snug">{market.question}</p>
-        <div className="flex items-center gap-2">
+        <button
+          onClick={e => { e.stopPropagation(); navigate(`/user/${market.pubkey}`) }}
+          className="flex items-center gap-2 hover:opacity-75 transition-opacity"
+        >
           <Avatar pubkey={market.pubkey} size="sm" />
           <span className="text-xs text-ink/30 font-mono">{truncate(market.pubkey)}</span>
-        </div>
+        </button>
         <div className="pt-1 border-t border-ink/5 space-y-2">
           <div className="flex items-center justify-between text-xs text-ink/30">
             <span>block {market.resolutionBlockheight.toLocaleString()}</span>

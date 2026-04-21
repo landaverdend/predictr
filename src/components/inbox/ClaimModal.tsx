@@ -73,7 +73,7 @@ export function ClaimModal({ contract, onClose }: Props) {
           <p className="text-xs text-ink/40">payout address</p>
 
           {keys.length > 0 && (
-            <div className="space-y-1.5">
+            <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
               {keys.map(k => {
                 const balance = (utxosByAddress[k.address] ?? []).reduce((s, u) => s + u.value, 0)
                 const isSelected = !useCustom && selectedAddress === k.address

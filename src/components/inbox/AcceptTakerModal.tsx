@@ -138,6 +138,7 @@ function FundStep({ contract, onCancel, onConfirm }: {
         {!loading && keys.length > 0 && eligible.length === 0 && (
           <p className="text-xs text-negative">no UTXOs with enough balance — need at least {(contract.makerStake + 2000).toLocaleString()} sats</p>
         )}
+        <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
         {eligible.map(w => {
           const id = `${w.utxo.tx_hash}:${w.utxo.tx_pos}`
           const active = selectedId === id
@@ -156,6 +157,7 @@ function FundStep({ contract, onCancel, onConfirm }: {
             </button>
           )
         })}
+        </div>
       </div>
 
       <ChangeAddressPicker

@@ -9,6 +9,7 @@ import OraclePage from './pages/OraclePage'
 import InboxPage from './pages/InboxPage'
 import WalletPage from './pages/WalletPage'
 import SettingsPage from './pages/SettingsPage'
+import UserPage from './pages/UserPage'
 
 function AppShell() {
   useDMs()
@@ -22,6 +23,7 @@ function AppShell() {
             <Route path="/contracts" element={<InboxPage />} />
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/user/:pubkey" element={<UserPage />} />
           </Routes>
         </div>
   )

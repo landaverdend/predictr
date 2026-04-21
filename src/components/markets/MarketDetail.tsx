@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Market, Offer } from '../../lib/market'
-import { takerStake, truncate, timeAgo } from '../../lib/market'
+import { takerStake, truncate, timeAgo, computeStats } from '../../lib/market'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { PlaceBetForm } from './PlaceBetForm'
 import { TakeOfferModal } from './TakeOfferModal'
 import { Avatar } from '../Avatar'
 
 function OfferRow({ offer, onTake }: { offer: Offer; onTake: () => void }) {
+  const navigate = useNavigate()
   return (
     <div className="border border-ink/10 rounded-lg px-5 py-4 flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -21,7 +23,12 @@ function OfferRow({ offer, onTake }: { offer: Offer; onTake: () => void }) {
         </div>
       </div>
       <div className="flex items-center gap-5 text-xs text-ink/30">
-        <span className="font-mono hidden sm:block">{truncate(offer.makerPubkey)}</span>
+        <button
+          onClick={() => navigate(`/user/${offer.makerPubkey}`)}
+          className="font-mono hidden sm:block hover:text-ink/60 transition-colors"
+        >
+          {truncate(offer.makerPubkey)}
+        </button>
         <span>{timeAgo(offer.createdAt)}</span>
         {offer.status === 'filled' ? (
           <span className="text-xs text-ink/20 px-3 py-1.5">filled</span>
@@ -41,6 +48,12 @@ function OfferRow({ offer, onTake }: { offer: Offer; onTake: () => void }) {
 export function MarketDetail({ market, offers, onBack }: { market: Market; offers: Offer[]; onBack: () => void }) {
   const [placing, setPlacing] = useState(false)
   const [taking, setTaking] = useState<Offer | null>(null)
+  const navigate = useNavigate()
+  const stats = computeStats(offers)
+  const hasVolume = stats.yesVolume > 0 || stats.noVolume > 0
+  const total = stats.yesVolume + stats.noVolume
+  const yesPct = hasVolume ? Math.round(stats.yesVolume / total * 100) : 50
+  const noPct = 100 - yesPct
 
   return (
     <div className="space-y-8">
@@ -55,12 +68,44 @@ export function MarketDetail({ market, offers, onBack }: { market: Market; offer
           {market.description && (
             <p className="text-sm text-ink/50 leading-relaxed">{market.description}</p>
           )}
-          <div className="flex items-center gap-4 pt-2 border-t border-ink/5">
-            <Avatar pubkey={market.pubkey} size="md" />
-            <div>
-              <p className="text-xs text-ink/30">oracle</p>
-              <p className="text-xs font-mono text-ink/60 mt-0.5">{truncate(market.pubkey)}</p>
+
+          {hasVolume && (
+            <div className="space-y-2">
+              <div className="flex h-2 rounded-full overflow-hidden">
+                <div className="bg-positive/60 transition-all duration-500" style={{ width: `${yesPct}%` }} />
+                <div className="bg-negative/60 flex-1" />
+              </div>
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-positive">YES {yesPct}%</span>
+                <span className="text-negative">{noPct}% NO</span>
+              </div>
             </div>
+          )}
+
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="bg-ink/5 rounded-lg px-3 py-3">
+              <p className="text-xs text-ink/30 mb-1">open offers</p>
+              <p className="text-sm font-mono font-medium">{stats.openCount}</p>
+            </div>
+            <div className="bg-ink/5 rounded-lg px-3 py-3">
+              <p className="text-xs text-ink/30 mb-1">filled</p>
+              <p className="text-sm font-mono font-medium">{stats.filledCount}</p>
+            </div>
+            <div className="bg-ink/5 rounded-lg px-3 py-3">
+              <p className="text-xs text-ink/30 mb-1">volume</p>
+              <p className="text-sm font-mono font-medium">{stats.totalVolume > 0 ? `${stats.totalVolume.toLocaleString()}` : '—'}</p>
+              {stats.totalVolume > 0 && <p className="text-[10px] text-ink/30">sats</p>}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4 pt-2 border-t border-ink/5">
+            <button onClick={() => navigate(`/user/${market.pubkey}`)} className="flex items-center gap-3 hover:opacity-75 transition-opacity">
+              <Avatar pubkey={market.pubkey} size="md" />
+              <div className="text-left">
+                <p className="text-xs text-ink/30">oracle</p>
+                <p className="text-xs font-mono text-ink/60 mt-0.5">{truncate(market.pubkey)}</p>
+              </div>
+            </button>
             <div className="ml-auto text-right">
               <p className="text-xs text-ink/30">resolves at</p>
               <p className="text-xs font-mono text-ink/60 mt-0.5">block {market.resolutionBlockheight.toLocaleString()}</p>
