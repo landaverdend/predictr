@@ -3,9 +3,9 @@ import { type Contract } from '../../db'
 import { Field } from './Field'
 import { useRelayContext } from '../../context/RelayContext'
 import { useWallet, type WalletUTXO } from '../../hooks/useWallet'
-import { sendFundingPsbt } from '../../lib/acceptTaker'
 import { ChangeAddressPicker } from './ChangeAddressPicker'
 import type { TakeRequest } from '../../lib/types'
+import { sendFundingPsbt } from '../../lib/offerFlow'
 
 // ── shared primitives ─────────────────────────────────────────────────────────
 
@@ -139,24 +139,24 @@ function FundStep({ contract, onCancel, onConfirm }: {
           <p className="text-xs text-negative">no UTXOs with enough balance — need at least {(contract.makerStake + 2000).toLocaleString()} sats</p>
         )}
         <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
-        {eligible.map(w => {
-          const id = `${w.utxo.tx_hash}:${w.utxo.tx_pos}`
-          const active = selectedId === id
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => { setSelectedId(id); setChangeAddress(w.key.address) }}
-              className={`w-full text-left rounded-lg border px-4 py-3 text-xs font-mono transition-colors ${active ? 'border-ink/40 bg-ink/5' : 'border-ink/10 hover:border-ink/20'}`}
-            >
-              <div className="flex justify-between">
-                <span className="text-ink/40">{w.utxo.tx_hash.slice(0, 10)}…:{w.utxo.tx_pos}</span>
-                <span className="text-ink/70">{w.utxo.value.toLocaleString()} sats</span>
-              </div>
-              <div className="text-ink/30 mt-0.5">{w.key.address.slice(0, 20)}…</div>
-            </button>
-          )
-        })}
+          {eligible.map(w => {
+            const id = `${w.utxo.tx_hash}:${w.utxo.tx_pos}`
+            const active = selectedId === id
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => { setSelectedId(id); setChangeAddress(w.key.address) }}
+                className={`w-full text-left rounded-lg border px-4 py-3 text-xs font-mono transition-colors ${active ? 'border-ink/40 bg-ink/5' : 'border-ink/10 hover:border-ink/20'}`}
+              >
+                <div className="flex justify-between">
+                  <span className="text-ink/40">{w.utxo.tx_hash.slice(0, 10)}…:{w.utxo.tx_pos}</span>
+                  <span className="text-ink/70">{w.utxo.value.toLocaleString()} sats</span>
+                </div>
+                <div className="text-ink/30 mt-0.5">{w.key.address.slice(0, 20)}…</div>
+              </button>
+            )
+          })}
         </div>
       </div>
 

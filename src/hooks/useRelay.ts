@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import type { Filter, NostrEvent } from 'nostr-tools'
+import { SimplePool, type Filter, type NostrEvent } from 'nostr-tools'
+
+// Single pool instance shared across the app
+export const pool = new SimplePool()
 
 export type RelayStatus = 'connecting' | 'connected' | 'disconnected'
 

@@ -39,14 +39,14 @@ export function useWatchFunding(contracts: Contract[]) {
         updatedAt: Date.now(),
       })
 
-      if (contract.offerDTag && window.nostr) {
+      if (contract.id && window.nostr) {
         const pubkey = await window.nostr.getPublicKey()
         const signed = await window.nostr.signEvent({
           kind: 30051,
           pubkey,
           created_at: Math.floor(Date.now() / 1000),
           tags: [
-            ['d', contract.offerDTag],
+            ['d', contract.id],
             ['e', contract.announcementEventId],
             ['m', contract.marketId],
             ['oracle', contract.oraclePubkey],

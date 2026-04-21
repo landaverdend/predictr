@@ -12,25 +12,25 @@ import { Avatar } from '../Avatar'
 import { useProfiles } from '../../hooks/useProfiles'
 
 const STATUS_LABEL: Record<string, string> = {
-  offer_pending:  'open',
-  take_received:  'action needed',
-  psbt_sent:      'psbt sent',
-  awaiting_psbt:  'pending maker response',
-  funded:         'funded',
-  resolved:       'resolved',
-  refunded:       'refunded',
-  cancelled:      'cancelled',
+  offer_pending: 'open',
+  take_received: 'action needed',
+  psbt_sent: 'psbt sent',
+  awaiting_psbt: 'pending maker response',
+  funded: 'funded',
+  resolved: 'resolved',
+  refunded: 'refunded',
+  cancelled: 'cancelled',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  offer_pending:  'text-ink/40 bg-ink/5',
-  take_received:  'text-caution bg-caution/10',
-  psbt_sent:      'text-brand bg-brand/10',
-  awaiting_psbt:  'text-caution bg-caution/10',
-  funded:         'text-positive bg-positive/10',
-  resolved:       'text-positive bg-positive/10',
-  refunded:       'text-ink/50 bg-ink/5',
-  cancelled:      'text-ink/30 bg-ink/5',
+  offer_pending: 'text-ink/40 bg-ink/5',
+  take_received: 'text-caution bg-caution/10',
+  psbt_sent: 'text-brand bg-brand/10',
+  awaiting_psbt: 'text-caution bg-caution/10',
+  funded: 'text-positive bg-positive/10',
+  resolved: 'text-positive bg-positive/10',
+  refunded: 'text-ink/50 bg-ink/5',
+  cancelled: 'text-ink/30 bg-ink/5',
 }
 
 export function ContractDetail({ contract, onBack }: { contract: Contract; onBack: () => void }) {
@@ -199,7 +199,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
         )}
 
         {/* PSBT received (taker) */}
-        {contract.role === 'taker' && contract.fundingPsbt && contract.status === 'psbt_sent' && (
+        {contract.role === 'taker' && contract.fundingPsbt && contract.status === 'psbt_received' && (
           <div className="border border-brand/20 bg-brand/5 rounded-lg p-5 space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-xs text-brand font-medium uppercase tracking-wider">funding psbt received</p>

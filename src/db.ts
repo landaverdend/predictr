@@ -6,6 +6,7 @@ export type ContractStatus =
   | 'take_received'    // maker: received take_request, needs to send PSBT
   | 'psbt_sent'        // maker: sent funding PSBT to taker
   | 'awaiting_psbt'    // taker: sent take request, waiting for PSBT
+  | 'psbt_received'    // taker: received funding PSBT, needs to sign
   | 'funded'           // both: funding tx broadcast, watching for resolution
   | 'resolved'         // both: oracle revealed preimage, claim tx sent
   | 'refunded'         // both: timelock expired, refund claimed
@@ -29,9 +30,6 @@ export interface Contract {
   yesHash: string
   noHash: string
   resolutionBlockheight: number
-
-  // offer identity
-  offerDTag?: string              // d-tag of the Kind 30051 offer event (maker only)
 
   // counterparty
   counterpartyPubkey: string
@@ -119,58 +117,6 @@ class NostrDlcDb extends Dexie {
   constructor() {
     super('nostr_dlc')
     this.version(1).stores({
-      contracts: 'id, role, status, marketId, createdAt',
-      messages: 'id, contractId, createdAt',
-      keys: 'id',
-    })
-    this.version(2).stores({
-      contracts: 'id, role, status, marketId, createdAt, updatedAt',
-      messages: 'id, contractId, createdAt',
-      keys: 'id',
-    })
-    this.version(3).stores({
-      contracts: 'id, role, status, marketId, createdAt, updatedAt',
-      messages: 'id, contractId, createdAt',
-      keys: 'id',
-      wallet: 'id',
-    })
-    this.version(4).stores({
-      contracts: 'id, role, status, marketId, createdAt, updatedAt',
-      messages: 'id, contractId, createdAt',
-      keys: 'id',
-      wallet: 'id',
-      oracleMarkets: 'id, createdAt',
-    })
-    this.version(5).stores({
-      contracts: 'id, role, status, marketId, createdAt, updatedAt',
-      messages: 'id, contractId, createdAt',
-      keys: 'id',
-      wallet: 'id',
-      oracleMarkets: 'id, createdAt',
-    })
-    this.version(6).stores({
-      contracts: 'id, role, status, marketId, createdAt, updatedAt',
-      messages: 'id, contractId, createdAt',
-      keys: 'id',
-      wallet: 'id',
-      oracleMarkets: 'id, createdAt',
-    })
-    this.version(7).stores({
-      contracts: 'id, role, status, marketId, createdAt, updatedAt',
-      messages: 'id, contractId, createdAt',
-      keys: 'id',
-      wallet: 'id',
-      oracleMarkets: 'id, createdAt',
-    })
-    this.version(8).stores({
-      contracts: 'id, role, status, marketId, createdAt, updatedAt',
-      messages: 'id, contractId, createdAt',
-      keys: 'id',
-      wallet: 'id',
-      oracleMarkets: 'id, createdAt',
-      settings: '&key',
-    })
-    this.version(9).stores({
       contracts: 'id, role, status, marketId, createdAt, updatedAt',
       messages: 'id, contractId, createdAt',
       keys: 'id',

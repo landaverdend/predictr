@@ -1,12 +1,99 @@
+
 import type { NostrEvent } from 'nostr-tools'
 import { SigHash } from '@scure/btc-signer'
 import type { Contract } from '../db'
 import { buildFundingTx } from './contract'
 import type { WalletUTXO } from '../hooks/useWallet'
-import type { TakeRequest } from './types'
+import type { TakeRequest, TakerInput } from './types'
 import { db } from '../db'
 import { hexToBytes } from './utils'
+import { Market, Offer, takerStake } from './market'
 
+/**
+ * Send a request to the market maker with change address, inputs to use for the psbt.  
+ */
+export async function sendTakeRequest(
+  publish: (event: NostrEvent) => Promise<void>,
+  market: Market,
+  offer: Offer,
+  input: TakerInput,
+  changeAddress: string,
+  walletKeyId: string,
+): Promise<void> {
+  if (!window.nostr) throw new Error('no nostr extension found')
+  if (!window.nostr.nip44) throw new Error('nostr extension does not support NIP-44')
+
+  const takerPubkey = await window.nostr.getPublicKey()
+  const now = Date.now()
+  const impliedTakerStake = takerStake(offer)
+
+  const walletKey = await db.wallet.get(walletKeyId)
+  if (!walletKey) throw new Error('wallet key not found')
+
+  const takeRequest: TakeRequest = {
+    type: 'take_request',
+    taker_pubkey: takerPubkey,
+    taker_wallet_pubkey: walletKey.pubkey,
+    input,
+    change_address: changeAddress,
+  }
+  const payload = JSON.stringify(takeRequest)
+
+  const ciphertext = await window.nostr.nip44.encrypt(offer.makerPubkey, payload)
+
+  const dmSigned = await window.nostr.signEvent({
+    kind: 14,
+    pubkey: takerPubkey,
+    created_at: Math.floor(now / 1000),
+    tags: [['p', offer.makerPubkey], ['a', `30051:${offer.makerPubkey}:${offer.id}`]],
+    content: ciphertext,
+  })
+  await publish(dmSigned)
+
+  await db.contracts.put({
+    id: offer.id,
+    role: 'taker',
+    status: 'awaiting_psbt',
+    side: offer.side,
+    marketId: market.id,
+    marketQuestion: market.question,
+    oraclePubkey: market.pubkey,
+    announcementEventId: market.eventId,
+    yesHash: market.yesHash,
+    noHash: market.noHash,
+    resolutionBlockheight: market.resolutionBlockheight,
+    counterpartyPubkey: offer.makerPubkey,
+    makerStake: offer.makerStake,
+    confidence: offer.confidence,
+    takerStake: impliedTakerStake,
+    takerInput: input,
+    takerChangeAddress: changeAddress,
+    takerWalletKeyId: walletKeyId,
+    takerWalletPubkey: walletKey.pubkey,
+    createdAt: now,
+    updatedAt: now,
+    unread: false,
+  })
+
+  await db.messages.put({
+    id: dmSigned.id,
+    contractId: offer.id,
+    direction: 'out',
+    type: 'take_request',
+    payload,
+    createdAt: now,
+  })
+}
+
+
+
+/**
+ * Response to the offer.
+ * @param publish 
+ * @param contract 
+ * @param taker 
+ * @param maker 
+ */
 export async function sendFundingPsbt(
   publish: (event: NostrEvent) => Promise<void>,
   contract: Contract,
@@ -49,32 +136,12 @@ export async function sendFundingPsbt(
     kind: 14,
     pubkey: makerPubkey,
     created_at: Math.floor(now / 1000),
-    tags: [['p', taker.taker_pubkey], ['e', contract.id]],
+    tags: [['p', taker.taker_pubkey], ['a', `30051:${makerPubkey}:${contract.id}`]],
     content: ciphertext,
   } as NostrEvent)
 
   await publish(signed)
 
-  // Mark the offer as filled on the relay (replaces the Kind 30051 via d-tag)
-  if (contract.offerDTag) {
-    const filledOffer = await window.nostr.signEvent({
-      kind: 30051,
-      pubkey: makerPubkey,
-      created_at: Math.floor(now / 1000),
-      tags: [
-        ['d', contract.offerDTag],
-        ['e', contract.announcementEventId],
-        ['m', contract.marketId],
-        ['oracle', contract.oraclePubkey],
-        ['side', contract.side],
-        ['maker_stake', String(contract.makerStake)],
-        ['confidence', String(contract.confidence)],
-        ['status', 'filled'],
-      ],
-      content: '',
-    } as NostrEvent)
-    await publish(filledOffer)
-  }
 
   await Promise.all([
     db.contracts.update(contract.id, {

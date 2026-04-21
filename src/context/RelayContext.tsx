@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import type { Filter, NostrEvent } from 'nostr-tools'
-import { pool } from '../lib/pool'
 import { db } from '../db'
+import { pool } from '../hooks/useRelay'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 

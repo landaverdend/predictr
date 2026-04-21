@@ -23,7 +23,6 @@ export type MarketStats = {
 
 export type Offer = {
   id: string        // d-tag
-  eventId: string   // nostr event id — used for e-tag in DMs
   makerPubkey: string
   side: 'YES' | 'NO'
   makerStake: number
@@ -68,7 +67,7 @@ export function computeStats(offers: Offer[]): MarketStats {
       totalVolume += o.makerStake + ts
       // Both sides locked in
       if (o.side === 'YES') { yesVolume += o.makerStake; noVolume += ts }
-      else                  { noVolume += o.makerStake; yesVolume += ts }
+      else { noVolume += o.makerStake; yesVolume += ts }
     }
   }
 
@@ -78,7 +77,6 @@ export function computeStats(offers: Offer[]): MarketStats {
 export function parseOffer(event: NostrEvent): Offer {
   return {
     id: tag(event, 'd'),
-    eventId: event.id,
     makerPubkey: event.pubkey,
     side: tag(event, 'side') as 'YES' | 'NO',
     makerStake: parseInt(tag(event, 'maker_stake'), 10),

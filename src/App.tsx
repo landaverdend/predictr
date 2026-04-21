@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'sonner'
 import { RelayProvider } from './context/RelayContext'
 import { ElectrumProvider } from './context/ElectrumContext'
-import { useDMs } from './hooks/useDMs'
+import { useCheckOffers } from './hooks/useCheckOffers'
 
 import Navbar from './components/Navbar'
 import MarketsPage from './pages/MarketsPage'
@@ -13,7 +14,7 @@ import UserPage from './pages/UserPage'
 import MarketPage from './pages/MarketPage'
 
 function AppShell() {
-  useDMs()
+  useCheckOffers()
   return (
     <div className="min-h-screen bg-base text-ink flex flex-col">
       <Navbar />
@@ -39,6 +40,7 @@ export default function App() {
           <AppShell />
         </ElectrumProvider>
       </RelayProvider>
+      <Toaster richColors position="top-right" />
     </BrowserRouter>
   )
 }

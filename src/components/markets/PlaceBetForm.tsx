@@ -3,14 +3,13 @@ import type { Market } from '../../lib/market'
 import { randomHex } from '../../lib/market'
 import { useRelayContext } from '../../context/RelayContext'
 import { db } from '../../db'
+import { toast } from 'sonner'
 
 export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () => void }) {
   const { publish } = useRelayContext()
   const [side, setSide] = useState<'YES' | 'NO'>('YES')
   const [makerStake, setMakerStake] = useState('')
   const [confidence, setConfidence] = useState('50')
-  const [status, setStatus] = useState<'idle' | 'publishing' | 'done' | 'error'>('idle')
-  const [error, setError] = useState('')
 
   const confidenceNum = Math.min(99, Math.max(1, parseInt(confidence) || 50))
   const makerStakeNum = parseInt(makerStake) || 0
@@ -21,13 +20,10 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!window.nostr) {
-      setError('no nostr extension found — install Alby')
-      setStatus('error')
+      toast.error('no nostr extension found')
+      onDone();
       return
     }
-
-    setStatus('publishing')
-    setError('')
 
     try {
       const pubkey = await window.nostr.getPublicKey()
@@ -54,7 +50,7 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
       await publish(signed)
 
       await db.contracts.put({
-        id: signed.id,
+        id: offerId,
         role: 'maker',
         status: 'offer_pending',
         side,
@@ -65,7 +61,6 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
         yesHash: market.yesHash,
         noHash: market.noHash,
         resolutionBlockheight: market.resolutionBlockheight,
-        offerDTag: offerId,
         counterpartyPubkey: '',
         makerStake: makerStakeNum,
         confidence: confidenceNum,
@@ -75,10 +70,11 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
         unread: false,
       })
 
-      setStatus('done')
+      toast.success('offer posted - taker requests will appear in "contracts" tab')
+      onDone();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'unknown error')
-      setStatus('error')
+      toast.error('failed to post offer')
+      onDone();
     }
   }
 
@@ -103,11 +99,10 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
               key={s}
               type="button"
               onClick={() => setSide(s)}
-              className={`flex-1 py-3 rounded-lg text-sm font-medium transition-colors ${
-                side === s
-                  ? s === 'YES' ? 'bg-positive/15 text-positive border border-positive/30' : 'bg-negative/15 text-negative border border-negative/30'
-                  : 'border border-ink/10 text-ink/30 hover:bg-ink/5'
-              }`}
+              className={`flex-1 py-3 rounded-lg text-sm font-medium transition-colors ${side === s
+                ? s === 'YES' ? 'bg-positive/15 text-positive border border-positive/30' : 'bg-negative/15 text-negative border border-negative/30'
+                : 'border border-ink/10 text-ink/30 hover:bg-ink/5'
+                }`}
             >
               {s}
             </button>
@@ -157,8 +152,6 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
           </div>
         </div>
 
-        {status === 'error' && <p className="text-xs text-negative">{error}</p>}
-        {status === 'done' && <p className="text-xs text-positive">offer posted — takers will DM you</p>}
 
         <div className="flex gap-2">
           <button

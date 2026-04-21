@@ -4,7 +4,8 @@ import { takerStake } from '../../lib/market'
 import { useRelayContext } from '../../context/RelayContext'
 import { useWallet, type WalletUTXO } from '../../hooks/useWallet'
 import { ChangeAddressPicker } from '../inbox/ChangeAddressPicker'
-import { sendTakeRequest } from '../../lib/takeOffer'
+import { toast } from 'sonner'
+import { sendTakeRequest } from '../../lib/offerFlow'
 
 export function TakeOfferModal({ market, offer, onDone }: { market: Market; offer: Offer; onDone: () => void }) {
   const { publish } = useRelayContext()
@@ -12,8 +13,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
 
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [changeAddress, setChangeAddress] = useState('')
-  const [submitStatus, setSubmitStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle')
-  const [submitError, setSubmitError] = useState('')
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'sending'>('idle')
 
   const impliedTakerStake = takerStake(offer)
   const eligible = allUtxos().filter(w => w.utxo.value >= impliedTakerStake + 2000)
@@ -24,14 +24,16 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
     if (!selected || !changeAddress.trim()) return
 
     setSubmitStatus('sending')
-    setSubmitError('')
     try {
       const input = { txid: selected.utxo.tx_hash, vout: selected.utxo.tx_pos, amount: selected.utxo.value }
       await sendTakeRequest(publish, market, offer, input, changeAddress.trim(), selected.key.id)
-      setSubmitStatus('done')
+
+      toast.success('take request sent — waiting for maker to respond')
+      onDone();
+
     } catch (err) {
-      setSubmitError(err instanceof Error ? err.message : 'unknown error')
-      setSubmitStatus('error')
+      toast.error('failed to send take request')
+      onDone();
     }
   }
 
@@ -102,9 +104,6 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
           highlightAddress={selected?.key.address}
         />
 
-        {submitStatus === 'error' && <p className="text-xs text-negative">{submitError}</p>}
-        {submitStatus === 'done' && <p className="text-xs text-positive">take request sent — waiting for maker to respond</p>}
-
         <div className="flex gap-2">
           <button type="button" onClick={onDone}
             className="flex-1 py-3 rounded-lg text-sm border border-ink/10 text-ink/40 hover:bg-ink/5 transition-colors">
@@ -112,7 +111,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
           </button>
           <button
             type="submit"
-            disabled={!selected || !changeAddress.trim() || submitStatus === 'sending' || submitStatus === 'done'}
+            disabled={!selected || !changeAddress.trim() || submitStatus === 'sending'}
             className="flex-1 py-3 rounded-lg text-sm font-medium bg-brand text-white hover:bg-brand-light disabled:opacity-20 disabled:cursor-not-allowed transition-all"
           >
             {submitStatus === 'sending' ? 'sending...' : 'send request'}
