@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, type Contract } from '../db'
 import { ContractDetail } from '../components/inbox/ContractDetail'
-import { useDMs } from '../hooks/useDMs'
 import { useWatchFunding } from '../hooks/useWatchFunding'
 import { useWatchResolution } from '../hooks/useWatchResolution'
 
@@ -76,8 +75,6 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
 }
 
 export default function InboxPage() {
-  useDMs()
-
   const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? []
   useWatchFunding(contracts)
   useWatchResolution(contracts)
@@ -86,7 +83,7 @@ export default function InboxPage() {
   const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null
 
   async function openContract(id: string) {
-    await db.contracts.update(id, { seenAt: Date.now() })
+    await db.contracts.update(id, { unread: false })
     setSelectedId(id)
   }
 

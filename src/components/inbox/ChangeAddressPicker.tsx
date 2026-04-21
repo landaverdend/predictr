@@ -44,6 +44,7 @@ export function ChangeAddressPicker({ value, onChange, keys, utxosByAddress, hig
 
       {open && (
         <div className="border border-ink/10 rounded-lg overflow-hidden bg-surface">
+          <div className="max-h-48 overflow-y-auto">
           {keys.map(k => {
             const utxos = utxosByAddress[k.address] ?? []
             const total = utxos.reduce((s, u) => s + u.value, 0)
@@ -72,6 +73,7 @@ export function ChangeAddressPicker({ value, onChange, keys, utxosByAddress, hig
             )
           })}
 
+          </div>
           {!showCustom ? (
             <button
               type="button"

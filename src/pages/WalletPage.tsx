@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type WalletKey } from '../db';
-import { generateMnemonic, deriveKeys, HD_KEY_COUNT } from '../lib/hdwallet';
+import { generateMnemonic, deriveKeys, isValidMnemonic, HD_KEY_COUNT } from '../lib/hdwallet';
 import { useElectrum } from '../hooks/useElectrum';
 
 async function getOrCreateMnemonic(): Promise<string> {
@@ -21,7 +21,14 @@ async function initWallet() {
 
 function SeedPhrase({ mnemonic }: { mnemonic: string }) {
   const [revealed, setRevealed] = useState(false);
+  const [copied, setCopied] = useState(false);
   const words = mnemonic.split(' ');
+
+  function handleCopy() {
+    navigator.clipboard.writeText(mnemonic)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   return (
     <div className="border border-ink/10 rounded-xl p-5 space-y-4">
@@ -30,11 +37,18 @@ function SeedPhrase({ mnemonic }: { mnemonic: string }) {
           <p className="text-sm font-medium">seed phrase</p>
           <p className="text-xs text-ink/40 mt-0.5">12 words · BIP39 · keep this secret</p>
         </div>
-        <button
-          onClick={() => setRevealed((r) => !r)}
-          className="text-xs text-ink/40 hover:text-ink/70 border border-ink/15 rounded px-3 py-1.5 transition-colors">
-          {revealed ? 'hide' : 'reveal'}
-        </button>
+        <div className="flex items-center gap-2">
+          {revealed && (
+            <button onClick={handleCopy} className="text-xs text-ink/40 hover:text-ink/70 border border-ink/15 rounded px-3 py-1.5 transition-colors">
+              {copied ? 'copied!' : 'copy'}
+            </button>
+          )}
+          <button
+            onClick={() => setRevealed((r) => !r)}
+            className="text-xs text-ink/40 hover:text-ink/70 border border-ink/15 rounded px-3 py-1.5 transition-colors">
+            {revealed ? 'hide' : 'reveal'}
+          </button>
+        </div>
       </div>
 
       {revealed ? (
@@ -51,6 +65,82 @@ function SeedPhrase({ mnemonic }: { mnemonic: string }) {
           <p className="text-xs text-ink/25 tracking-widest select-none">{'• '.repeat(12).trim()}</p>
         </div>
       )}
+    </div>
+  );
+}
+
+function ImportModal({ onImport, onClose }: { onImport: (mnemonic: string) => Promise<void>; onClose: () => void }) {
+  const [value, setValue] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle');
+  const [error, setError] = useState('');
+
+  const trimmed = value.trim();
+  const wordCount = trimmed ? trimmed.split(/\s+/).length : 0;
+  const isValid = isValidMnemonic(trimmed);
+
+  async function handleConfirm() {
+    if (!isValid) {
+      setError('invalid mnemonic');
+      setStatus('error');
+      return;
+    }
+    setStatus('loading');
+    setError('');
+    try {
+      await onImport(trimmed);
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'import failed');
+      setStatus('error');
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-base/70 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-sm bg-surface border border-ink/10 rounded-xl p-7 space-y-5"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">import seed phrase</p>
+          <button type="button" onClick={onClose} className="text-ink/30 hover:text-ink/60 transition-colors text-xl leading-none">×</button>
+        </div>
+        <p className="text-xs text-ink/40 leading-relaxed">
+          paste your 12-word BIP39 seed phrase. this will replace your current wallet.
+        </p>
+        <textarea
+          rows={3}
+          placeholder="word1 word2 word3 ..."
+          value={value}
+          onChange={e => { setValue(e.target.value); setStatus('idle'); setError(''); }}
+          className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors resize-none"
+          autoFocus
+        />
+        <div className="flex items-center justify-between text-xs">
+          <span className={wordCount === 12 && isValid ? 'text-positive' : 'text-ink/30'}>
+            {wordCount} / 12 words{wordCount === 12 && isValid ? ' · valid' : wordCount === 12 ? ' · invalid' : ''}
+          </span>
+          {status === 'error' && <span className="text-negative">{error}</span>}
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex-1 py-3 rounded-lg text-sm border border-ink/10 text-ink/40 hover:bg-ink/5 transition-colors"
+          >
+            cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={!isValid || status === 'loading'}
+            className="flex-1 py-3 rounded-lg text-sm font-medium bg-brand text-white hover:bg-brand-light disabled:opacity-20 disabled:cursor-not-allowed transition-all"
+          >
+            {status === 'loading' ? 'importing…' : 'import'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -75,6 +165,7 @@ function KeyRow({ walletKey, balance }: { walletKey: WalletKey; balance: number 
 
 export default function WalletPage() {
   const [mnemonic, setMnemonic] = useState<string | null>(null);
+  const [showImport, setShowImport] = useState(false);
   const keys = useLiveQuery(() => db.wallet.toArray().then((ks) => ks.sort((a, b) => Number(a.id) - Number(b.id))), []);
   const { client } = useElectrum();
   const [balances, setBalances] = useState<Record<string, number>>({});
@@ -82,6 +173,14 @@ export default function WalletPage() {
   useEffect(() => {
     initWallet().then(setMnemonic);
   }, []);
+
+  async function handleImport(newMnemonic: string) {
+    await db.settings.put({ key: 'wallet_mnemonic', value: newMnemonic });
+    const keys = deriveKeys(newMnemonic);
+    await db.wallet.clear();
+    await db.wallet.bulkPut(keys);
+    setMnemonic(newMnemonic);
+  }
 
   useEffect(() => {
     if (!keys?.length || !client) return;
@@ -135,7 +234,19 @@ export default function WalletPage() {
 
       {mnemonic && <SeedPhrase mnemonic={mnemonic} />}
 
-      <p className="text-xs text-negative/50">seed phrase and private keys stored unencrypted in IndexedDB — regtest only</p>
+      <div className="flex items-center gap-3">
+        <p className="text-xs text-negative/50 flex-1">seed phrase and private keys stored unencrypted in IndexedDB — regtest only</p>
+        <button
+          onClick={() => setShowImport(true)}
+          className="text-xs text-ink/40 hover:text-ink/70 border border-ink/15 rounded px-3 py-1.5 transition-colors shrink-0"
+        >
+          import
+        </button>
+      </div>
+
+      {showImport && (
+        <ImportModal onImport={handleImport} onClose={() => setShowImport(false)} />
+      )}
     </main>
   );
 }

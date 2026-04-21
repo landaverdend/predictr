@@ -4,17 +4,43 @@ import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext, DEFAULT_ELECTRUM_URL } from '../context/ElectrumContext'
 import { db } from '../db'
 
+type PingStatus = 'checking' | 'ok' | 'fail'
+
+function pingRelay(url: string): Promise<boolean> {
+  return new Promise(resolve => {
+    let settled = false
+    const done = (v: boolean) => { if (!settled) { settled = true; resolve(v) } }
+    const timeout = setTimeout(() => { done(false); try { ws.close() } catch {} }, 4000)
+    let ws: WebSocket
+    try {
+      ws = new WebSocket(url)
+      ws.onopen = () => { clearTimeout(timeout); done(true); ws.close() }
+      ws.onerror = () => { clearTimeout(timeout); done(false) }
+    } catch { done(false) }
+  })
+}
+
 function RelayManager() {
   const { relays, saveRelays } = useRelayContext()
   const [draft, setDraft] = useState<string[]>(relays)
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
-  const [editValue, setEditValue] = useState('')
+  const [savedValue, setSavedValue] = useState('')   // for escape-to-cancel
   const [input, setInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [pingStatus, setPingStatus] = useState<Record<string, PingStatus>>({})
 
+  useEffect(() => { setDraft(relays) }, [relays.join(',')])
+
+  // ping each url in the draft whenever the list changes
   useEffect(() => {
-    setDraft(relays)
-  }, [relays.join(',')])
+    draft.forEach(url => {
+      if (!url.startsWith('ws')) return
+      setPingStatus(prev => ({ ...prev, [url]: 'checking' }))
+      pingRelay(url).then(ok =>
+        setPingStatus(prev => ({ ...prev, [url]: ok ? 'ok' : 'fail' }))
+      )
+    })
+  }, [draft.join(',')])
 
   const isDirty = draft.join(',') !== relays.join(',')
 
@@ -32,60 +58,69 @@ function RelayManager() {
 
   function startEdit(idx: number) {
     setEditingIdx(idx)
-    setEditValue(draft[idx])
+    setSavedValue(draft[idx])
   }
 
   function commitEdit(idx: number) {
-    const url = editValue.trim()
-    if (url && url !== draft[idx]) {
-      setDraft(prev => prev.map((r, i) => i === idx ? url : r))
-    }
+    const url = draft[idx].trim()
+    if (!url) setDraft(prev => prev.map((r, i) => i === idx ? savedValue : r))
     setEditingIdx(null)
   }
 
   async function handleSave() {
     setSaving(true)
-    try {
-      await saveRelays(draft)
-    } finally {
-      setSaving(false)
-    }
+    try { await saveRelays(draft) } finally { setSaving(false) }
+  }
+
+  const PING_DOT: Record<PingStatus, string> = {
+    checking: 'bg-caution animate-pulse',
+    ok:       'bg-positive',
+    fail:     'bg-negative',
   }
 
   return (
     <div className="p-5 space-y-4">
       <div className="space-y-1.5">
-        {draft.map((url, idx) => (
-          <div key={idx} className="flex items-center gap-2 bg-elevated rounded-lg px-3 py-2">
-            {editingIdx === idx ? (
-              <input
-                autoFocus
-                type="text"
-                value={editValue}
-                onChange={e => setEditValue(e.target.value)}
-                onBlur={() => commitEdit(idx)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') commitEdit(idx)
-                  if (e.key === 'Escape') setEditingIdx(null)
-                }}
-                className="flex-1 bg-transparent text-sm font-mono text-ink/90 focus:outline-none"
-              />
-            ) : (
+        {draft.map((url, idx) => {
+          const status = pingStatus[url]
+          return (
+            <div key={idx} className="flex items-center gap-2 bg-elevated rounded-lg px-3 py-2">
+              {status && (
+                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${PING_DOT[status]}`} />
+              )}
+              {editingIdx === idx ? (
+                <input
+                  autoFocus
+                  type="text"
+                  value={url}
+                  onChange={e => setDraft(prev => prev.map((r, i) => i === idx ? e.target.value : r))}
+                  onBlur={() => commitEdit(idx)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') commitEdit(idx)
+                    if (e.key === 'Escape') {
+                      setDraft(prev => prev.map((r, i) => i === idx ? savedValue : r))
+                      setEditingIdx(null)
+                    }
+                  }}
+                  className="flex-1 bg-transparent text-sm font-mono text-ink/90 focus:outline-none"
+                />
+              ) : (
+                <button
+                  onClick={() => startEdit(idx)}
+                  className="flex-1 text-left text-sm font-mono text-ink/70 hover:text-ink/90 transition-colors truncate"
+                >
+                  {url}
+                </button>
+              )}
               <button
-                onClick={() => startEdit(idx)}
-                className="flex-1 text-left text-sm font-mono text-ink/70 hover:text-ink/90 transition-colors truncate"
+                onClick={() => handleRemove(idx)}
+                className="text-ink/20 hover:text-negative transition-colors text-lg leading-none shrink-0"
               >
-                {url}
+                ×
               </button>
-            )}
-            <button
-              onClick={() => handleRemove(idx)}
-              className="text-ink/20 hover:text-negative transition-colors text-lg leading-none shrink-0"
-            >
-              ×
-            </button>
-          </div>
-        ))}
+            </div>
+          )
+        })}
         {draft.length === 0 && (
           <p className="text-xs text-ink/30">no relays configured</p>
         )}
@@ -126,8 +161,15 @@ function ElectrumManager() {
   const { url, saveUrl, error } = useElectrumContext()
   const [draft, setDraft] = useState(url)
   const [saving, setSaving] = useState(false)
+  const [pingStatus, setPingStatus] = useState<PingStatus | null>(null)
 
   useEffect(() => { setDraft(url) }, [url])
+
+  useEffect(() => {
+    if (!draft.startsWith('ws')) { setPingStatus(null); return }
+    setPingStatus('checking')
+    pingRelay(draft).then(ok => setPingStatus(ok ? 'ok' : 'fail'))
+  }, [draft])
 
   const isDirty = draft !== url
 
@@ -136,16 +178,25 @@ function ElectrumManager() {
     try { await saveUrl(draft) } finally { setSaving(false) }
   }
 
+  const PING_DOT: Record<PingStatus, string> = {
+    checking: 'bg-caution animate-pulse',
+    ok:       'bg-positive',
+    fail:     'bg-negative',
+  }
+
   return (
     <div className="p-5 space-y-4">
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2 bg-elevated rounded-lg px-3 py-2">
+        {pingStatus && (
+          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${PING_DOT[pingStatus]}`} />
+        )}
         <input
           type="text"
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && isDirty && handleSave()}
           placeholder={DEFAULT_ELECTRUM_URL}
-          className="flex-1 bg-elevated border border-ink/10 rounded-lg px-4 py-2.5 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
+          className="flex-1 bg-transparent text-sm font-mono text-ink/90 placeholder-ink/20 focus:outline-none"
         />
       </div>
       {error && (

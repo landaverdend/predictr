@@ -36,15 +36,9 @@ export function useDMs() {
             if (!contract || contract.role !== 'maker') return
             if (contract.status !== 'offer_pending') return
 
-            await db.contracts.update(offerEventId, {
-              status: 'take_received',
-              counterpartyPubkey: msg.taker_pubkey as string,
-              takerInput: msg.input as { txid: string; vout: number; amount: number },
-              takerChangeAddress: msg.change_address as string,
-              takerWalletPubkey: msg.taker_wallet_pubkey as string,
-              updatedAt: now,
-              seenAt: undefined,
-            })
+            // Don't change status — keep offer_pending so multiple takers can arrive.
+            // Just mark as unread so the badge fires.
+            await db.contracts.update(offerEventId, { unread: true, updatedAt: now })
           } else if (msg.type === 'psbt_offer') {
             const contract = await db.contracts.get(offerEventId)
             if (!contract || contract.role !== 'taker') return
@@ -55,7 +49,7 @@ export function useDMs() {
               fundingPsbt: msg.funding_psbt as string,
               makerWalletPubkey: msg.maker_wallet_pubkey as string,
               updatedAt: now,
-              seenAt: undefined,
+              unread: true,
             })
           }
 

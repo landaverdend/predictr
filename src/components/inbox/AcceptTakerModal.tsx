@@ -5,6 +5,7 @@ import { useRelayContext } from '../../context/RelayContext'
 import { useWallet, type WalletUTXO } from '../../hooks/useWallet'
 import { sendFundingPsbt } from '../../lib/acceptTaker'
 import { ChangeAddressPicker } from './ChangeAddressPicker'
+import type { TakeRequest } from '../../lib/types'
 
 // ── shared primitives ─────────────────────────────────────────────────────────
 
@@ -61,8 +62,9 @@ function ModalActions({ onCancel, onConfirm, confirmLabel, disabled }: {
 
 // ── step 1: review taker ──────────────────────────────────────────────────────
 
-function ReviewStep({ contract, onCancel, onAccept }: {
+function ReviewStep({ contract, taker, onCancel, onAccept }: {
   contract: Contract
+  taker: TakeRequest
   onCancel: () => void
   onAccept: () => void
 }) {
@@ -84,23 +86,21 @@ function ReviewStep({ contract, onCancel, onAccept }: {
         </div>
       </div>
 
-      {contract.takerInput && (
-        <div className="border border-caution/20 bg-caution/5 rounded-lg p-4 space-y-2 text-xs">
-          <p className="text-caution uppercase tracking-wider mb-2">taker</p>
-          <Field label="pubkey" mono>
-            <span className="break-all text-ink/60">{contract.counterpartyPubkey}</span>
-          </Field>
-          <Field label="input" mono>
-            <span className="break-all text-ink/60 text-[10px]">
-              {contract.takerInput.txid}:{contract.takerInput.vout}
-            </span>
-          </Field>
-          <Field label="amount" mono>{contract.takerInput.amount.toLocaleString()} sats</Field>
-          <Field label="payout address" mono>
-            <span className="break-all text-ink/60">{contract.takerChangeAddress}</span>
-          </Field>
-        </div>
-      )}
+      <div className="border border-caution/20 bg-caution/5 rounded-lg p-4 space-y-2 text-xs">
+        <p className="text-caution uppercase tracking-wider mb-2">taker</p>
+        <Field label="pubkey" mono>
+          <span className="break-all text-ink/60">{taker.taker_pubkey}</span>
+        </Field>
+        <Field label="input" mono>
+          <span className="break-all text-ink/60 text-[10px]">
+            {taker.input.txid}:{taker.input.vout}
+          </span>
+        </Field>
+        <Field label="amount" mono>{taker.input.amount.toLocaleString()} sats</Field>
+        <Field label="payout address" mono>
+          <span className="break-all text-ink/60">{taker.change_address}</span>
+        </Field>
+      </div>
 
       <ModalActions onCancel={onCancel} onConfirm={onAccept} confirmLabel="accept →" />
     </div>
@@ -178,7 +178,7 @@ function FundStep({ contract, onCancel, onConfirm }: {
 
 type Step = 'review' | 'fund'
 
-export function AcceptTakerModal({ contract, onClose }: { contract: Contract; onClose: () => void }) {
+export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contract; taker: TakeRequest; onClose: () => void }) {
   const [step, setStep] = useState<Step>('review')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -190,7 +190,7 @@ export function AcceptTakerModal({ contract, onClose }: { contract: Contract; on
     setSending(true)
     setError('')
     try {
-      await sendFundingPsbt(publish, contract, { funding, changeAddress })
+      await sendFundingPsbt(publish, contract, taker, { funding, changeAddress })
       onClose()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'failed to send PSBT')
@@ -215,7 +215,7 @@ export function AcceptTakerModal({ contract, onClose }: { contract: Contract; on
         </div>
 
         {step === 'review' && (
-          <ReviewStep contract={contract} onCancel={onClose} onAccept={() => setStep('fund')} />
+          <ReviewStep contract={contract} taker={taker} onCancel={onClose} onAccept={() => setStep('fund')} />
         )}
         {step === 'fund' && (
           <FundStep contract={contract} onCancel={() => setStep('review')} onConfirm={handleConfirm} />

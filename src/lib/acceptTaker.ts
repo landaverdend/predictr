@@ -3,28 +3,27 @@ import { SigHash } from '@scure/btc-signer'
 import type { Contract } from '../db'
 import { buildFundingTx } from './contract'
 import type { WalletUTXO } from '../hooks/useWallet'
+import type { TakeRequest } from './types'
 import { db } from '../db'
 import { hexToBytes } from './utils'
 
 export async function sendFundingPsbt(
   publish: (event: NostrEvent) => Promise<void>,
   contract: Contract,
+  taker: TakeRequest,
   maker: { funding: WalletUTXO; changeAddress: string },
 ): Promise<void> {
   if (!window.nostr?.nip44) throw new Error('nostr extension with NIP-44 required')
-  if (!contract.takerInput || !contract.takerChangeAddress) throw new Error('missing taker input data')
 
   const makerPubkey = await window.nostr.getPublicKey()
   const makerWalletPubkey = maker.funding.key.pubkey
-
-  if (!contract.takerWalletPubkey) throw new Error('missing taker wallet pubkey — taker must re-send take request')
 
   const tx = buildFundingTx(
     {
       yesHash: contract.yesHash,
       noHash: contract.noHash,
       makerPubkey: makerWalletPubkey,
-      takerPubkey: contract.takerWalletPubkey,
+      takerPubkey: taker.taker_wallet_pubkey,
       resolutionBlockheight: contract.resolutionBlockheight,
     },
     {
@@ -33,9 +32,9 @@ export async function sendFundingPsbt(
       changeAddress: maker.changeAddress,
     },
     {
-      input: contract.takerInput,
+      input: taker.input,
       stake: contract.takerStake,
-      changeAddress: contract.takerChangeAddress,
+      changeAddress: taker.change_address,
     },
   )
 
@@ -43,14 +42,14 @@ export async function sendFundingPsbt(
   const psbt = btoa(String.fromCharCode(...tx.toPSBT()))
 
   const payload = JSON.stringify({ type: 'psbt_offer', funding_psbt: psbt, maker_wallet_pubkey: makerWalletPubkey })
-  const ciphertext = await window.nostr.nip44.encrypt(contract.counterpartyPubkey, payload)
+  const ciphertext = await window.nostr.nip44.encrypt(taker.taker_pubkey, payload)
   const now = Date.now()
 
   const signed = await window.nostr.signEvent({
     kind: 14,
     pubkey: makerPubkey,
     created_at: Math.floor(now / 1000),
-    tags: [['p', contract.counterpartyPubkey], ['e', contract.id]],
+    tags: [['p', taker.taker_pubkey], ['e', contract.id]],
     content: ciphertext,
   } as NostrEvent)
 
@@ -62,6 +61,10 @@ export async function sendFundingPsbt(
       fundingPsbt: psbt,
       makerWalletKeyId: maker.funding.key.id,
       makerWalletPubkey: makerWalletPubkey,
+      counterpartyPubkey: taker.taker_pubkey,
+      takerInput: taker.input,
+      takerChangeAddress: taker.change_address,
+      takerWalletPubkey: taker.taker_wallet_pubkey,
       updatedAt: now,
     }),
     db.messages.put({

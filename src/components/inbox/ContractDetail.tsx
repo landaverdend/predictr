@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { type Contract, db } from '../../db'
+import type { TakeRequest } from '../../lib/types'
 import { Field } from './Field'
 import { AcceptTakerModal } from './AcceptTakerModal'
 import { ClaimModal } from './ClaimModal'
@@ -36,8 +38,16 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   const profiles = useProfiles(counterpartyPubkeys)
   const counterpartyProfile = contract.counterpartyPubkey ? profiles.get(contract.counterpartyPubkey) : undefined
 
-  const [showAccept, setShowAccept] = useState(false)
+  const [acceptingTaker, setAcceptingTaker] = useState<TakeRequest | null>(null)
   const [showClaim, setShowClaim] = useState(false)
+
+  const takeRequests = useLiveQuery(async () => {
+    const msgs = await db.messages
+      .where('contractId').equals(contract.id)
+      .filter(m => m.direction === 'in' && m.type === 'take_request')
+      .toArray()
+    return msgs.map(m => ({ id: m.id, req: JSON.parse(m.payload) as TakeRequest }))
+  }, [contract.id], [])
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState('')
   const [refunding, setRefunding] = useState(false)
@@ -145,66 +155,47 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
           </div>
         </div>
 
-        {/* Taker request */}
-        {contract.role === 'maker' && contract.status === 'take_received' && contract.takerInput && (
-          <div className="border border-caution/20 bg-caution/5 rounded-lg p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-caution font-medium uppercase tracking-wider">taker request</p>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleRefuse}
-                  disabled={refusing}
-                  className="px-3 py-1.5 text-xs font-medium text-negative border border-negative/30 rounded-lg hover:bg-negative/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                >
-                  refuse
-                </button>
-                <button
-                  onClick={() => setShowAccept(true)}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-positive rounded-lg hover:bg-positive/80 transition-colors"
-                >
-                  accept
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs text-ink/30 uppercase tracking-wider mb-2">taker identity</p>
-              <div className="flex items-center gap-3">
-                {contract.counterpartyPubkey && <Avatar pubkey={contract.counterpartyPubkey} size="md" />}
-                <div className="min-w-0">
-                  {counterpartyProfile?.name && (
-                    <p className="text-xs text-ink/70 font-medium truncate">{counterpartyProfile.name}</p>
-                  )}
-                  <p className="text-[10px] font-mono text-ink/40 break-all">{contract.counterpartyPubkey}</p>
+        {/* Taker requests — shown while offer is pending (including legacy take_received) */}
+        {contract.role === 'maker' && (contract.status === 'offer_pending' || contract.status === 'take_received') && (
+          takeRequests.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs text-caution font-medium uppercase tracking-wider">
+                {takeRequests.length} taker request{takeRequests.length !== 1 ? 's' : ''}
+              </p>
+              {takeRequests.map(({ id: msgId, req: tr }) => (
+                <div key={msgId} className="border border-caution/20 bg-caution/5 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Avatar pubkey={tr.taker_pubkey} size="sm" />
+                      <p className="text-[10px] font-mono text-ink/40 truncate">{tr.taker_pubkey}</p>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => db.messages.delete(msgId)}
+                        className="px-2.5 py-1 text-xs font-medium text-negative border border-negative/30 rounded-lg hover:bg-negative/10 transition-colors"
+                      >
+                        refuse
+                      </button>
+                      <button
+                        onClick={() => setAcceptingTaker(tr)}
+                        className="px-2.5 py-1 text-xs font-medium text-white bg-positive rounded-lg hover:bg-positive/80 transition-colors"
+                      >
+                        accept
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <Field label="amount" mono>{tr.input.amount.toLocaleString()} sats</Field>
+                    <Field label="input" mono>{tr.input.txid.slice(0, 8)}…:{tr.input.vout}</Field>
+                  </div>
                 </div>
-              </div>
+              ))}
             </div>
-
-            <div>
-              <p className="text-xs text-ink/30 uppercase tracking-wider mb-2">their input</p>
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <Field label="txid" mono span2>
-                  <span className="break-all text-ink/60 text-[10px]">{contract.takerInput.txid}</span>
-                </Field>
-                <Field label="vout" mono>{contract.takerInput.vout}</Field>
-                <Field label="amount" mono>{contract.takerInput.amount.toLocaleString()} sats</Field>
-              </div>
+          ) : (
+            <div className="border border-ink/10 rounded-lg p-4 text-xs text-ink/30 text-center">
+              waiting for a taker to respond…
             </div>
-
-            <div>
-              <p className="text-xs text-ink/30 uppercase tracking-wider mb-2">their addresses</p>
-              <Field label="payout / change address" mono>
-                <span className="break-all text-ink/60">{contract.takerChangeAddress}</span>
-              </Field>
-            </div>
-          </div>
-        )}
-
-        {/* Awaiting taker */}
-        {contract.role === 'maker' && !contract.takerInput && contract.status === 'offer_pending' && (
-          <div className="border border-ink/10 rounded-lg p-4 text-xs text-ink/30 text-center">
-            waiting for a taker to respond…
-          </div>
+          )
         )}
 
         {/* PSBT received (taker) */}
@@ -281,8 +272,8 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
         )}
       </div>
 
-      {showAccept && (
-        <AcceptTakerModal contract={contract} onClose={() => setShowAccept(false)} />
+      {acceptingTaker && (
+        <AcceptTakerModal contract={contract} taker={acceptingTaker} onClose={() => setAcceptingTaker(null)} />
       )}
       {showClaim && (
         <ClaimModal contract={contract} onClose={() => setShowClaim(false)} />

@@ -24,6 +24,7 @@ type RelayContextValue = {
 // ── constants ─────────────────────────────────────────────────────────────────
 
 const RELAYS_KEY = 'relays'
+const DEFAULT_RELAYS = ['ws://kratomstr.io:7777']
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -52,7 +53,7 @@ async function loadRelays(): Promise<string[]> {
     }
     return valid
   }
-  return []
+  return DEFAULT_RELAYS
 }
 
 async function saveRelays(relays: string[]): Promise<void> {

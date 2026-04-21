@@ -55,7 +55,7 @@ export interface Contract {
   fundingTxid?: string
 
   // ui state
-  seenAt?: number                 // set when user opens the detail view; undefined = unseen (badge shown)
+  unread: boolean                 // true = new activity since last opened (badge shown)
 
   // settlement
   outcome?: ContractSide
@@ -163,6 +163,14 @@ class NostrDlcDb extends Dexie {
       oracleMarkets: 'id, createdAt',
     })
     this.version(8).stores({
+      contracts: 'id, role, status, marketId, createdAt, updatedAt',
+      messages: 'id, contractId, createdAt',
+      keys: 'id',
+      wallet: 'id',
+      oracleMarkets: 'id, createdAt',
+      settings: '&key',
+    })
+    this.version(9).stores({
       contracts: 'id, role, status, marketId, createdAt, updatedAt',
       messages: 'id, contractId, createdAt',
       keys: 'id',

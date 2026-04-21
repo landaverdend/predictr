@@ -64,6 +64,7 @@ export async function sendTakeRequest(
     takerWalletPubkey: walletKey.pubkey,
     createdAt: now,
     updatedAt: now,
+    unread: false,
   })
 
   await db.messages.put({

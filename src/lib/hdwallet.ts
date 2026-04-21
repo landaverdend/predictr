@@ -1,4 +1,4 @@
-import { generateMnemonic as bip39Generate, mnemonicToSeedSync } from '@scure/bip39'
+import { generateMnemonic as bip39Generate, mnemonicToSeedSync, validateMnemonic } from '@scure/bip39'
 import { wordlist } from '@scure/bip39/wordlists/english.js'
 import { HDKey } from '@scure/bip32'
 import { p2tr } from '@scure/btc-signer'
@@ -14,6 +14,10 @@ function toHex(b: Uint8Array) {
 
 export function generateMnemonic(): string {
   return bip39Generate(wordlist, 128) // 12 words
+}
+
+export function isValidMnemonic(mnemonic: string): boolean {
+  return validateMnemonic(mnemonic.trim(), wordlist)
 }
 
 export function deriveKeys(mnemonic: string, count = HD_KEY_COUNT): WalletKey[] {

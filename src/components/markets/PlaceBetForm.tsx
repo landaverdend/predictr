@@ -72,6 +72,7 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
         takerStake: impliedTakerStake,
         createdAt: Date.now(),
         updatedAt: Date.now(),
+        unread: false,
       })
 
       setStatus('done')
