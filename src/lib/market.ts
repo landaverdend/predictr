@@ -11,7 +11,14 @@ export type Market = {
   noHash: string
   imageUrl?: string
   relays: string[]
-  offerCount: number
+}
+
+export type MarketStats = {
+  openCount: number
+  filledCount: number
+  totalVolume: number   // sats — sum of full pots for filled offers
+  yesVolume: number     // sats committed to YES side (open + filled)
+  noVolume: number      // sats committed to NO side (open + filled)
 }
 
 export type Offer = {
@@ -42,8 +49,30 @@ export function parseMarket(event: NostrEvent): Market {
     noHash: tag(event, 'no_hash'),
     imageUrl: imageUri || undefined,
     relays: event.tags.filter(t => t[0] === 'r').map(t => t[1]),
-    offerCount: 0,
   }
+}
+
+export function computeStats(offers: Offer[]): MarketStats {
+  let openCount = 0
+  let filledCount = 0
+  let totalVolume = 0
+  let yesVolume = 0
+  let noVolume = 0
+
+  for (const o of offers) {
+    const ts = takerStake(o)
+    if (o.status === 'open') {
+      openCount++
+    } else {
+      filledCount++
+      totalVolume += o.makerStake + ts
+      // Both sides locked in
+      if (o.side === 'YES') { yesVolume += o.makerStake; noVolume += ts }
+      else                  { noVolume += o.makerStake; yesVolume += ts }
+    }
+  }
+
+  return { openCount, filledCount, totalVolume, yesVolume, noVolume }
 }
 
 export function parseOffer(event: NostrEvent): Offer {

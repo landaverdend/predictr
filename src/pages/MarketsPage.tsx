@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { NostrEvent } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
-import { parseMarket, parseOffer, tag } from '../lib/market'
+import { parseMarket, parseOffer, computeStats, tag } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import { MarketGrid } from '../components/markets/MarketGrid'
 import { MarketDetail } from '../components/markets/MarketDetail'
@@ -19,18 +19,19 @@ export default function MarketsPage() {
       (event: NostrEvent) => {
         if (event.kind === 8050) {
           const market = parseMarket(event)
-          setMarkets(prev => ({ ...prev, [market.id]: { ...market, offerCount: prev[market.id]?.offerCount ?? 0 } }))
+          setMarkets(prev => ({ ...prev, [market.id]: market }))
         } else if (event.kind === 30051) {
           const offer = parseOffer(event)
           const marketId = tag(event, 'market_id')
           setOffers(prev => {
             const existing = prev[marketId] ?? []
-            if (existing.some(o => o.id === offer.id)) return prev
+            const idx = existing.findIndex(o => o.id === offer.id)
+            if (idx >= 0) {
+              const updated = [...existing]
+              updated[idx] = offer
+              return { ...prev, [marketId]: updated }
+            }
             return { ...prev, [marketId]: [...existing, offer] }
-          })
-          setMarkets(prev => {
-            if (!prev[marketId]) return prev
-            return { ...prev, [marketId]: { ...prev[marketId], offerCount: prev[marketId].offerCount + 1 } }
           })
         }
       },
@@ -57,7 +58,7 @@ export default function MarketsPage() {
               no markets found on relay
             </div>
           ) : (
-            <MarketGrid markets={Object.values(markets)} onSelect={setSelected} />
+            <MarketGrid markets={Object.values(markets)} offers={offers} onSelect={setSelected} />
           )}
         </>
       )}

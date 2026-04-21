@@ -55,6 +55,27 @@ export async function sendFundingPsbt(
 
   await publish(signed)
 
+  // Mark the offer as filled on the relay (replaces the Kind 30051 via d-tag)
+  if (contract.offerDTag) {
+    const filledOffer = await window.nostr.signEvent({
+      kind: 30051,
+      pubkey: makerPubkey,
+      created_at: Math.floor(now / 1000),
+      tags: [
+        ['d', contract.offerDTag],
+        ['e', contract.announcementEventId],
+        ['oracle', contract.oraclePubkey],
+        ['market_id', contract.marketId],
+        ['side', contract.side],
+        ['maker_stake', String(contract.makerStake)],
+        ['confidence', String(contract.confidence)],
+        ['status', 'filled'],
+      ],
+      content: '',
+    } as NostrEvent)
+    await publish(filledOffer)
+  }
+
   await Promise.all([
     db.contracts.update(contract.id, {
       status: 'psbt_sent',
