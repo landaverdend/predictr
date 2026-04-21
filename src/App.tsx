@@ -3,6 +3,10 @@ import { Toaster } from 'sonner'
 import { RelayProvider } from './context/RelayContext'
 import { ElectrumProvider } from './context/ElectrumContext'
 import { useCheckOffers } from './hooks/useCheckOffers'
+import { useWatchFunding } from './hooks/useWatchFunding'
+import { useWatchResolution } from './hooks/useWatchResolution'
+import { useLiveQuery } from 'dexie-react-hooks'
+import { db } from './db'
 
 import Navbar from './components/Navbar'
 import MarketsPage from './pages/MarketsPage'
@@ -14,7 +18,10 @@ import UserPage from './pages/UserPage'
 import MarketPage from './pages/MarketPage'
 
 function AppShell() {
+  const contracts = useLiveQuery(() => db.contracts.toArray()) ?? []
   useCheckOffers()
+  useWatchFunding(contracts)
+  useWatchResolution(contracts)
   return (
     <div className="min-h-screen bg-base text-ink flex flex-col">
       <Navbar />

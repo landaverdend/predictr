@@ -2,8 +2,6 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Contract } from '../db';
 import { ContractDetail } from '../components/inbox/ContractDetail';
-import { useWatchFunding } from '../hooks/useWatchFunding';
-import { useWatchResolution } from '../hooks/useWatchResolution';
 
 const STATUS_LABEL: Record<string, string> = {
   offer_pending: 'open',
@@ -90,12 +88,16 @@ const SETTLED = ['resolved', 'refunded', 'cancelled']
 
 export default function InboxPage() {
   const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? []
-  useWatchFunding(contracts)
-  useWatchResolution(contracts)
   const [tab, setTab] = useState<Tab>('made')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null
+
+  const unread = {
+    made: contracts.filter(c => c.role === 'maker' && !SETTLED.includes(c.status) && c.unread).length,
+    taken: contracts.filter(c => c.role === 'taker' && !SETTLED.includes(c.status) && c.unread).length,
+    settled: contracts.filter(c => SETTLED.includes(c.status) && c.unread).length,
+  }
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'made', label: 'my offers' },
@@ -138,6 +140,11 @@ export default function InboxPage() {
             }`}
           >
             {t.label}
+            {unread[t.key] > 0 && (
+              <span className="ml-1.5 text-xs bg-brand text-white rounded-full px-1.5 py-0.5 leading-none">
+                {unread[t.key]}
+              </span>
+            )}
           </button>
         ))}
       </div>
