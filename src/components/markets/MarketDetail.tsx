@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Market, Offer } from '../../lib/market'
+import type { Resolution } from '../../pages/MarketsPage'
 import { takerStake, truncate, timeAgo, computeStats } from '../../lib/market'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { PlaceBetForm } from './PlaceBetForm'
 import { TakeOfferModal } from './TakeOfferModal'
 import { Avatar } from '../Avatar'
+import { Input } from '../Input'
 
 function OfferRow({ offer, onTake }: { offer: Offer; onTake: () => void }) {
   const navigate = useNavigate()
@@ -45,12 +47,40 @@ function OfferRow({ offer, onTake }: { offer: Offer; onTake: () => void }) {
   )
 }
 
-export function MarketDetail({ market, offers, onBack }: { market: Market; offers: Offer[]; onBack: () => void }) {
+type StatusFilter = 'all' | 'open' | 'filled'
+
+export function MarketDetail({ market, offers, resolution, blockHeight, onBack }: {
+  market: Market
+  offers: Offer[]
+  resolution: Resolution | undefined
+  blockHeight: number | null
+  onBack: () => void
+}) {
   const [placing, setPlacing] = useState(false)
   const [taking, setTaking] = useState<Offer | null>(null)
   const navigate = useNavigate()
+
+  // filters
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [minSats, setMinSats] = useState('')
+  const [maxSats, setMaxSats] = useState('')
+  const [minConf, setMinConf] = useState('')
+  const [maxConf, setMaxConf] = useState('')
+
+  const filteredOffers = offers.filter(o => {
+    if (statusFilter === 'open' && o.status !== 'open') return false
+    if (statusFilter === 'filled' && o.status === 'open') return false
+    if (minSats && o.makerStake < parseInt(minSats)) return false
+    if (maxSats && o.makerStake > parseInt(maxSats)) return false
+    if (minConf && o.confidence < parseInt(minConf)) return false
+    if (maxConf && o.confidence > parseInt(maxConf)) return false
+    return true
+  })
+
   const stats = computeStats(offers)
   const hasVolume = stats.yesVolume > 0 || stats.noVolume > 0
+  const isPastDeadline = blockHeight !== null && blockHeight >= market.resolutionBlockheight
+  const isClosed = !!resolution || isPastDeadline
   const total = stats.yesVolume + stats.noVolume
   const yesPct = hasVolume ? Math.round(stats.yesVolume / total * 100) : 50
   const noPct = 100 - yesPct
@@ -114,24 +144,112 @@ export function MarketDetail({ market, offers, onBack }: { market: Market; offer
         </div>
       </div>
 
+      {resolution && (
+        <div className={`rounded-lg px-4 py-3 text-sm font-medium border ${resolution.outcome === 'YES' ? 'bg-positive/10 border-positive/20 text-positive' : 'bg-negative/10 border-negative/20 text-negative'}`}>
+          resolved: <span className="font-bold">{resolution.outcome}</span>
+          <p className="text-[11px] font-mono font-normal mt-1 opacity-60 break-all">preimage: {resolution.preimage}</p>
+        </div>
+      )}
+      {!resolution && isPastDeadline && (
+        <div className="rounded-lg px-4 py-3 text-sm bg-ink/5 border border-ink/10 text-ink/50">
+          past resolution block — awaiting oracle reveal
+        </div>
+      )}
+
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">open offers</h3>
-          <button
-            onClick={() => setPlacing(true)}
-            className="text-xs border border-ink/20 rounded px-3 py-1.5 hover:bg-ink/5 transition-colors"
-          >
-            place bet
-          </button>
+          <h3 className="text-sm font-medium">offers</h3>
+          {!isClosed && (
+            <button
+              onClick={() => setPlacing(true)}
+              className="text-xs border border-ink/20 rounded px-3 py-1.5 hover:bg-ink/5 transition-colors"
+            >
+              place bet
+            </button>
+          )}
         </div>
+
+        {/* Filters */}
+        {offers.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Status toggle */}
+            <div className="flex rounded-lg border border-ink/10 overflow-hidden text-xs">
+              {(['all', 'open', 'filled'] as StatusFilter[]).map(s => (
+                <button
+                  key={s}
+                  onClick={() => setStatusFilter(s)}
+                  className={`px-3 py-1.5 transition-colors ${statusFilter === s ? 'bg-ink/10 text-ink/80' : 'text-ink/30 hover:text-ink/60'}`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+
+            {/* Sats range */}
+            <div className="flex items-center border border-ink/10 rounded-lg overflow-hidden text-xs">
+              <span className="px-3 py-1.5 text-ink/30 border-r border-ink/10 bg-ink/3 select-none">sats</span>
+              <input
+                type="number"
+                placeholder="min"
+                value={minSats}
+                onChange={e => setMinSats(e.target.value)}
+                className="w-16 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-ink/20 px-0.5">–</span>
+              <input
+                type="number"
+                placeholder="max"
+                value={maxSats}
+                onChange={e => setMaxSats(e.target.value)}
+                className="w-16 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+            </div>
+
+            {/* Confidence range */}
+            <div className="flex items-center border border-ink/10 rounded-lg overflow-hidden text-xs">
+              <span className="px-3 py-1.5 text-ink/30 border-r border-ink/10 bg-ink/3 select-none">conf</span>
+              <input
+                type="number"
+                min="1" max="99"
+                placeholder="min"
+                value={minConf}
+                onChange={e => setMinConf(e.target.value)}
+                className="w-12 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="text-ink/20 px-0.5">–</span>
+              <input
+                type="number"
+                min="1" max="99"
+                placeholder="max"
+                value={maxConf}
+                onChange={e => setMaxConf(e.target.value)}
+                className="w-12 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <span className="pr-3 text-ink/30">%</span>
+            </div>
+
+            {(statusFilter !== 'all' || minSats || maxSats || minConf || maxConf) && (
+              <button
+                onClick={() => { setStatusFilter('all'); setMinSats(''); setMaxSats(''); setMinConf(''); setMaxConf('') }}
+                className="text-xs text-ink/30 hover:text-ink/60 transition-colors"
+              >
+                clear
+              </button>
+            )}
+          </div>
+        )}
 
         {offers.length === 0 ? (
           <div className="border border-ink/10 rounded-lg p-12 text-center text-ink/30 text-sm">
             no offers yet — be the first
           </div>
+        ) : filteredOffers.length === 0 ? (
+          <div className="border border-ink/10 rounded-lg p-8 text-center text-ink/30 text-sm">
+            no offers match filters
+          </div>
         ) : (
           <div className="space-y-2">
-            {offers.map(offer => (
+            {filteredOffers.map(offer => (
               <OfferRow key={offer.id} offer={offer} onTake={() => setTaking(offer)} />
             ))}
           </div>

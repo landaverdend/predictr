@@ -50,12 +50,19 @@ type Pending = {
   reject: (e: Error) => void
 }
 
+type NotificationHandler = (params: unknown) => void
+
 export class ElectrumWS {
   private ws: WebSocket | null = null
   private pending = new Map<number, Pending>()
+  private notifications = new Map<string, NotificationHandler>()
   private id = 1
 
   constructor(private url: string) { }
+
+  onNotification(method: string, handler: NotificationHandler) {
+    this.notifications.set(method, handler)
+  }
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -66,9 +73,13 @@ export class ElectrumWS {
 
       this.ws.onmessage = e => {
         try {
-          // electrum sends newline-delimited JSON; may get multiple per frame
           String(e.data).split('\n').filter(Boolean).forEach(line => {
             const msg = JSON.parse(line)
+            // Push notification (no id, has method)
+            if (msg.method && msg.id === undefined) {
+              this.notifications.get(msg.method)?.(msg.params)
+              return
+            }
             const p = this.pending.get(msg.id)
             if (!p) return
             this.pending.delete(msg.id)

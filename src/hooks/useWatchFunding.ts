@@ -48,8 +48,8 @@ export function useWatchFunding(contracts: Contract[]) {
           tags: [
             ['d', contract.offerDTag],
             ['e', contract.announcementEventId],
+            ['m', contract.marketId],
             ['oracle', contract.oraclePubkey],
-            ['market_id', contract.marketId],
             ['side', contract.side],
             ['maker_stake', String(contract.makerStake)],
             ['confidence', String(contract.confidence)],

@@ -1,28 +1,33 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { NostrEvent } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
-import { parseMarket, parseOffer, computeStats, tag } from '../lib/market'
+import { useElectrumContext } from '../context/ElectrumContext'
+import { parseMarket, parseOffer, tag } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import { MarketGrid } from '../components/markets/MarketGrid'
-import { MarketDetail } from '../components/markets/MarketDetail'
+
+export type Resolution = { outcome: 'YES' | 'NO'; preimage: string }
 
 export default function MarketsPage() {
+  const navigate = useNavigate()
   const { subscribe } = useRelayContext()
+  const { blockHeight } = useElectrumContext()
   const [markets, setMarkets] = useState<Record<string, Market>>({})
   const [offers, setOffers] = useState<Record<string, Offer[]>>({})
-  const [selected, setSelected] = useState<Market | null>(null)
+  const [resolutions, setResolutions] = useState<Record<string, Resolution>>({})
 
   useEffect(() => {
     const unsub = subscribe(
       'markets-feed',
-      [{ kinds: [8050, 30051] }],
+      [{ kinds: [8050, 30051, 8052] }],
       (event: NostrEvent) => {
         if (event.kind === 8050) {
           const market = parseMarket(event)
           setMarkets(prev => ({ ...prev, [market.id]: market }))
         } else if (event.kind === 30051) {
           const offer = parseOffer(event)
-          const marketId = tag(event, 'market_id')
+          const marketId = tag(event, 'm') || tag(event, 'market_id')
           setOffers(prev => {
             const existing = prev[marketId] ?? []
             const idx = existing.findIndex(o => o.id === offer.id)
@@ -33,6 +38,13 @@ export default function MarketsPage() {
             }
             return { ...prev, [marketId]: [...existing, offer] }
           })
+        } else if (event.kind === 8052) {
+          const marketId = tag(event, 'd')
+          const outcome = tag(event, 'outcome') as 'YES' | 'NO'
+          const preimage = tag(event, 'preimage')
+          if (marketId && outcome) {
+            setResolutions(prev => ({ ...prev, [marketId]: { outcome, preimage } }))
+          }
         }
       },
     )
@@ -41,26 +53,22 @@ export default function MarketsPage() {
 
   return (
     <main className="flex-1 px-6 py-12 max-w-3xl mx-auto w-full">
-      {selected ? (
-        <MarketDetail
-          market={selected}
-          offers={offers[selected.id] ?? []}
-          onBack={() => setSelected(null)}
-        />
+      <div className="mb-10">
+        <h1 className="text-2xl font-bold mb-2">markets</h1>
+        <p className="text-ink/40 text-sm">open bets on nostr</p>
+      </div>
+      {Object.values(markets).length === 0 ? (
+        <div className="text-center text-ink/30 text-sm py-24">
+          no markets found on relay
+        </div>
       ) : (
-        <>
-          <div className="mb-10">
-            <h1 className="text-2xl font-bold mb-2">markets</h1>
-            <p className="text-ink/40 text-sm">open bets on nostr</p>
-          </div>
-          {Object.values(markets).length === 0 ? (
-            <div className="text-center text-ink/30 text-sm py-24">
-              no markets found on relay
-            </div>
-          ) : (
-            <MarketGrid markets={Object.values(markets)} offers={offers} onSelect={setSelected} />
-          )}
-        </>
+        <MarketGrid
+          markets={Object.values(markets)}
+          offers={offers}
+          resolutions={resolutions}
+          blockHeight={blockHeight}
+          onSelect={m => navigate(`/markets/${m.id}`)}
+        />
       )}
     </main>
   )

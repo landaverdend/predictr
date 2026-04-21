@@ -92,7 +92,7 @@ export default function UserPage() {
           setMarkets(prev => ({ ...prev, [market.id]: market }))
         } else if (event.kind === 30051) {
           const offer = parseOffer(event)
-          const marketId = tag(event, 'market_id')
+          const marketId = tag(event, 'm') || tag(event, 'market_id')
           setUserOffers(prev => {
             const idx = prev.findIndex(o => o.id === offer.id)
             if (idx >= 0) { const u = [...prev]; u[idx] = offer; return u }

@@ -9,6 +9,7 @@ type ElectrumContextValue = {
   client: ElectrumWS | null
   url: string
   error: string | null
+  blockHeight: number | null
   saveUrl: (url: string) => Promise<void>
 }
 
@@ -18,6 +19,7 @@ export function ElectrumProvider({ children }: { children: React.ReactNode }) {
   const [url, setUrl] = useState<string | null>(null)
   const [client, setClient] = useState<ElectrumWS | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [blockHeight, setBlockHeight] = useState<number | null>(null)
 
   // Load URL from DB on mount
   useEffect(() => {
@@ -33,7 +35,18 @@ export function ElectrumProvider({ children }: { children: React.ReactNode }) {
     setClient(null)
     setError(null)
     instance.connect()
-      .then(() => { setClient(instance); setError(null) })
+      .then(() => {
+        setClient(instance)
+        setError(null)
+        // blockchain.headers.subscribe returns current tip AND sends push on new blocks
+        instance.onNotification('blockchain.headers.subscribe', (params) => {
+          const tip = Array.isArray(params) ? params[0] : params
+          if (tip && typeof tip === 'object' && 'height' in tip) {
+            setBlockHeight((tip as { height: number }).height)
+          }
+        })
+        instance.getBlockHeight().then(setBlockHeight).catch(() => {})
+      })
       .catch(e => { setError(e.message); setClient(null) })
     return () => {
       instance.close()
@@ -47,7 +60,7 @@ export function ElectrumProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ElectrumContext.Provider value={{ client, url: url ?? DEFAULT_ELECTRUM_URL, error, saveUrl }}>
+    <ElectrumContext.Provider value={{ client, url: url ?? DEFAULT_ELECTRUM_URL, error, blockHeight, saveUrl }}>
       {children}
     </ElectrumContext.Provider>
   )

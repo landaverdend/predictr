@@ -1,21 +1,47 @@
 import { useNavigate } from 'react-router-dom'
 import type { Market, Offer } from '../../lib/market'
+import type { Resolution } from '../../pages/MarketsPage'
 import { truncate, computeStats } from '../../lib/market'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { Avatar } from '../Avatar'
 
-function MarketCard({ market, offers, onSelect }: { market: Market; offers: Offer[]; onSelect: () => void }) {
+function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
+  market: Market
+  offers: Offer[]
+  resolution: Resolution | undefined
+  blockHeight: number | null
+  onSelect: () => void
+}) {
   const navigate = useNavigate()
   const stats = computeStats(offers)
+  const isPastDeadline = blockHeight !== null && blockHeight >= market.resolutionBlockheight
+  const isResolved = !!resolution
+  const isClosed = isResolved || isPastDeadline
 
   return (
     <button
       onClick={onSelect}
       className="text-left border border-ink/10 rounded-lg overflow-hidden hover:border-ink/25 transition-colors"
     >
-      <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} />
+      <div className="relative">
+        <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} />
+        {isResolved && (
+          <div className="absolute top-3 right-3">
+            <span className={`text-[10px] font-medium px-2 py-0.5 rounded ${resolution!.outcome === 'YES' ? 'bg-positive/20 text-positive border border-positive/30' : 'bg-negative/20 text-negative border border-negative/30'}`}>
+              resolved {resolution!.outcome}
+            </span>
+          </div>
+        )}
+        {!isResolved && isPastDeadline && (
+          <div className="absolute top-3 right-3">
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-ink/40 text-white/70">pending</span>
+          </div>
+        )}
+      </div>
       <div className="p-5 space-y-4">
-        <p className="text-sm font-medium leading-snug">{market.question}</p>
+        <div className="flex items-start gap-2">
+          <p className="text-sm font-medium leading-snug flex-1">{market.question}</p>
+        </div>
         <button
           onClick={e => { e.stopPropagation(); navigate(`/user/${market.pubkey}`) }}
           className="flex items-center gap-2 hover:opacity-75 transition-opacity"
@@ -56,11 +82,24 @@ function MarketCard({ market, offers, onSelect }: { market: Market; offers: Offe
   )
 }
 
-export function MarketGrid({ markets, offers, onSelect }: { markets: Market[]; offers: Record<string, Offer[]>; onSelect: (m: Market) => void }) {
+export function MarketGrid({ markets, offers, resolutions, blockHeight, onSelect }: {
+  markets: Market[]
+  offers: Record<string, Offer[]>
+  resolutions: Record<string, Resolution>
+  blockHeight: number | null
+  onSelect: (m: Market) => void
+}) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
       {markets.map(market => (
-        <MarketCard key={market.id} market={market} offers={offers[market.id] ?? []} onSelect={() => onSelect(market)} />
+        <MarketCard
+          key={market.id}
+          market={market}
+          offers={offers[market.id] ?? []}
+          resolution={resolutions[market.id]}
+          blockHeight={blockHeight}
+          onSelect={() => onSelect(market)}
+        />
       ))}
     </div>
   )

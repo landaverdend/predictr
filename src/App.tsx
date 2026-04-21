@@ -10,6 +10,7 @@ import InboxPage from './pages/InboxPage'
 import WalletPage from './pages/WalletPage'
 import SettingsPage from './pages/SettingsPage'
 import UserPage from './pages/UserPage'
+import MarketPage from './pages/MarketPage'
 
 function AppShell() {
   useDMs()
@@ -24,6 +25,7 @@ function AppShell() {
             <Route path="/wallet" element={<WalletPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/user/:pubkey" element={<UserPage />} />
+            <Route path="/markets/:marketId" element={<MarketPage />} />
           </Routes>
         </div>
   )

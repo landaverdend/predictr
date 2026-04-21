@@ -35,29 +35,38 @@ function timeAgo(ts: number) {
   return `${Math.floor(diff / 86400)}d ago`
 }
 
-function resolvedLabel(contract: Contract): { label: string; color: string } {
-  if (contract.status !== 'resolved' || !contract.outcome) return { label: 'resolved', color: 'text-ink/40 bg-ink/5' }
-  const ourSide = contract.role === 'maker' ? contract.side : (contract.side === 'YES' ? 'NO' : 'YES')
-  const won = ourSide === contract.outcome
-  return won
-    ? { label: 'won', color: 'text-positive bg-positive/10' }
-    : { label: 'lost', color: 'text-negative bg-negative/10' }
+function contractLabel(contract: Contract): { label: string; color: string } {
+  if (contract.status === 'resolved') {
+    if (!contract.outcome) return { label: 'resolved', color: 'text-ink/40 bg-ink/5' }
+    const ourSide = contract.role === 'maker' ? contract.side : (contract.side === 'YES' ? 'NO' : 'YES')
+    const won = ourSide === contract.outcome
+    return won
+      ? { label: 'won', color: 'text-[#f59e0b] bg-[#f59e0b]/10 font-semibold' }
+      : { label: 'lost', color: 'text-negative bg-negative/10' }
+  }
+  if (contract.status === 'psbt_sent') {
+    return contract.role === 'taker'
+      ? { label: 'psbt received', color: STATUS_COLOR.psbt_sent }
+      : { label: 'psbt sent', color: STATUS_COLOR.psbt_sent }
+  }
+  return { label: STATUS_LABEL[contract.status] ?? contract.status, color: STATUS_COLOR[contract.status] ?? 'text-ink/40 bg-ink/5' }
 }
 
 function ContractRow({ contract, onClick }: { contract: Contract; onClick: () => void }) {
   const totalPot = contract.makerStake + contract.takerStake
   const side = contract.role === 'maker' ? contract.side : (contract.side === 'YES' ? 'NO' : 'YES')
-  const { label, color } = contract.status === 'resolved'
-    ? resolvedLabel(contract)
-    : { label: STATUS_LABEL[contract.status] ?? contract.status, color: STATUS_COLOR[contract.status] ?? 'text-ink/40 bg-ink/5' }
+  const { label, color } = contractLabel(contract)
 
   return (
     <button
       onClick={onClick}
-      className="w-full text-left border border-ink/10 rounded-lg px-4 py-3.5 hover:border-ink/25 transition-colors"
+      className={`w-full text-left border rounded-lg px-4 py-3.5 transition-colors ${contract.unread ? 'border-brand/30 bg-brand/5 hover:border-brand/50' : 'border-ink/10 hover:border-ink/25'}`}
     >
       <div className="flex items-start justify-between gap-3">
-        <p className="text-sm font-medium leading-snug flex-1 line-clamp-1">{contract.marketQuestion}</p>
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {contract.unread && <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />}
+          <p className="text-sm font-medium leading-snug line-clamp-1">{contract.marketQuestion}</p>
+        </div>
         <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${color}`}>
           {label}
         </span>

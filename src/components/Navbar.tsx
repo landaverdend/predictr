@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { useRelayContext } from '../context/RelayContext'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useNavBadges } from '../hooks/useNavBadges'
+import { useElectrumContext } from '../context/ElectrumContext'
 import NavBadge from './NavBadge'
 import { db } from '../db'
 
@@ -96,12 +97,18 @@ function UserMenu() {
 
 export default function Navbar() {
   const { status } = useRelayContext()
+  const { blockHeight } = useElectrumContext()
   const badges = useNavBadges()
 
   return (
     <header className="border-b border-ink/10 px-6 py-3 flex items-center justify-between bg-navbar">
-      {/* Logo */}
-      <span className="font-mono font-bold tracking-tight text-brand">predictr</span>
+      {/* Logo + block height */}
+      <div className="flex items-center gap-4">
+        <span className="font-mono font-bold tracking-tight text-brand">predictr</span>
+        {blockHeight !== null && (
+          <span className="font-mono text-xs text-ink/30">block {blockHeight.toLocaleString()}</span>
+        )}
+      </div>
 
       {/* Right side: links + status + user */}
       <div className="flex items-center gap-6">

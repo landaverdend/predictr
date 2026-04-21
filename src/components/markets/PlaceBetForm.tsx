@@ -40,8 +40,8 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
         tags: [
           ['d', offerId],
           ['e', market.eventId],
+          ['m', market.id],
           ['oracle', market.pubkey],
-          ['market_id', market.id],
           ['side', side],
           ['maker_stake', makerStake],
           ['confidence', String(confidenceNum)],
