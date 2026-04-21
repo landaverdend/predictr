@@ -48,7 +48,7 @@ export function useCheckOffers() {
               if (!contract || contract.role !== 'maker') { toast.error(`contract ${contractId} not found`); return }
 
               if (contract.status === 'offer_pending') {
-                toast.info('Buyer is interested in your market for: ' + contract.marketQuestion)
+                toast.info('Buy offer received: ' + contract.marketQuestion)
                 await db.contracts.update(contractId, { unread: true, updatedAt: now })
               }
               break
@@ -93,7 +93,7 @@ export function useCheckOffers() {
               if (!contract || contract.role !== 'taker') { toast.error(`contract ${contractId} not found`); return }
 
               if (contract.status === 'awaiting_psbt') {
-                toast.info('Market maker has sent you a funding PSBT for your offer for: ' + contract.marketQuestion)
+                toast.info('Funding PSBT received: ' + contract.marketQuestion)
                 await db.contracts.update(contractId, {
                   unread: true,
                   updatedAt: now,

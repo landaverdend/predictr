@@ -4,6 +4,7 @@ import { db } from '../db'
 import { buildContractOutputScripts } from '../lib/contract'
 import { useElectrum } from './useElectrum'
 import { useRelayContext } from '../context/RelayContext'
+import { toast } from 'sonner'
 
 export function useWatchFunding(contracts: Contract[]) {
   const { client } = useElectrum()
@@ -38,6 +39,7 @@ export function useWatchFunding(contracts: Contract[]) {
         fundingTxid: utxos[0].tx_hash,
         updatedAt: Date.now(),
       })
+      toast.success(`Contract funded: ${contract.marketQuestion}`)
 
       if (contract.id && window.nostr) {
         const pubkey = await window.nostr.getPublicKey()

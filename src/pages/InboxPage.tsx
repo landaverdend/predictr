@@ -84,17 +84,34 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
   );
 }
 
-export default function InboxPage() {
-  const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? [];
-  useWatchFunding(contracts);
-  useWatchResolution(contracts);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+type Tab = 'made' | 'taken' | 'settled'
 
-  const selected = selectedId ? (contracts.find((c) => c.id === selectedId) ?? null) : null;
+const SETTLED = ['resolved', 'refunded', 'cancelled']
+
+export default function InboxPage() {
+  const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? []
+  useWatchFunding(contracts)
+  useWatchResolution(contracts)
+  const [tab, setTab] = useState<Tab>('made')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null
+
+  const tabs: { key: Tab; label: string }[] = [
+    { key: 'made', label: 'my offers' },
+    { key: 'taken', label: 'taken offers' },
+    { key: 'settled', label: 'settled' },
+  ]
+
+  const visible = contracts.filter(c => {
+    if (tab === 'made') return c.role === 'maker' && !SETTLED.includes(c.status)
+    if (tab === 'taken') return c.role === 'taker' && !SETTLED.includes(c.status)
+    return SETTLED.includes(c.status)
+  })
 
   async function openContract(id: string) {
-    await db.contracts.update(id, { unread: false });
-    setSelectedId(id);
+    await db.contracts.update(id, { unread: false })
+    setSelectedId(id)
   }
 
   if (selected) {
@@ -102,25 +119,38 @@ export default function InboxPage() {
       <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full">
         <ContractDetail contract={selected} onBack={() => setSelectedId(null)} />
       </main>
-    );
+    )
   }
 
   return (
     <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full">
-      <div className="mb-8">
+      <div className="mb-6">
         <h1 className="text-2xl font-bold mb-1">contracts</h1>
-        <p className="text-ink/40 text-sm">your active and pending contracts</p>
       </div>
 
-      {contracts.length === 0 ? (
-        <div className="text-center text-ink/30 text-sm py-20">no contracts yet — post an offer or take one</div>
+      <div className="flex gap-1 mb-6 border-b border-ink/10">
+        {tabs.map(t => (
+          <button
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
+              tab === t.key ? 'border-brand text-ink' : 'border-transparent text-ink/40 hover:text-ink/70'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {visible.length === 0 ? (
+        <div className="text-center text-ink/30 text-sm py-20">nothing here yet</div>
       ) : (
         <div className="space-y-2">
-          {contracts.map((contract) => (
+          {visible.map(contract => (
             <ContractRow key={contract.id} contract={contract} onClick={() => openContract(contract.id)} />
           ))}
         </div>
       )}
     </main>
-  );
+  )
 }
