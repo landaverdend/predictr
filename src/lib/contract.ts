@@ -1,9 +1,11 @@
 import { Script, p2tr, TAPROOT_UNSPENDABLE_KEY, Transaction, SigHash } from '@scure/btc-signer'
 import { hexToBytes, REFUND_DELAY } from './utils'
+import { BITCOIN_NETWORK } from './config'
 
 type Network = { bech32: string; pubKeyHash: number; scriptHash: number; wif: number }
 
-export const REGTEST: Network = { bech32: 'bcrt', pubKeyHash: 0x6f, scriptHash: 0xc4, wif: 0xef }
+// Re-export for callers that imported REGTEST directly
+export const REGTEST = BITCOIN_NETWORK
 
 export type ContractParams = {
   yesHash: string              // 32-byte hex — SHA256(yes_preimage)

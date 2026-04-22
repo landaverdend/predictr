@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { ElectrumWS } from '../lib/electrum'
 import { db } from '../db'
+import { DEFAULT_ELECTRUM_URL as CONFIG_DEFAULT_ELECTRUM_URL } from '../lib/config'
 
 const ELECTRUM_KEY = 'electrum_url'
-export const DEFAULT_ELECTRUM_URL = 'ws://nigiri.kratom.io:5050/electrum'
+export const DEFAULT_ELECTRUM_URL = CONFIG_DEFAULT_ELECTRUM_URL
 
 type ElectrumContextValue = {
   client: ElectrumWS | null

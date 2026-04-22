@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import type { Filter, NostrEvent } from 'nostr-tools'
 import { db } from '../db'
 import { pool } from '../hooks/useRelay'
+import { DEFAULT_RELAY } from '../lib/config'
 
 // ── types ─────────────────────────────────────────────────────────────────────
 
@@ -24,7 +25,7 @@ type RelayContextValue = {
 // ── constants ─────────────────────────────────────────────────────────────────
 
 const RELAYS_KEY = 'relays'
-const DEFAULT_RELAYS = ['ws://kratomstr.io:7777']
+const DEFAULT_RELAYS = [DEFAULT_RELAY]
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
