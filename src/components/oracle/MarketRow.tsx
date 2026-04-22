@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useRelayContext } from '../../context/RelayContext'
 import { db, type OracleMarket } from '../../db'
+import { KIND_RESOLUTION } from '../../lib/kinds'
 
 export function MarketRow({ market }: { market: OracleMarket }) {
   const { publish } = useRelayContext()
@@ -18,7 +19,7 @@ export function MarketRow({ market }: { market: OracleMarket }) {
       const pubkey = await window.nostr.getPublicKey()
 
       const signed = await window.nostr.signEvent({
-        kind: 8052,
+        kind: KIND_RESOLUTION,
         pubkey,
         created_at: Math.floor(Date.now() / 1000),
         tags: [

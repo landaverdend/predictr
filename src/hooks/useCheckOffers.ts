@@ -3,6 +3,7 @@ import { useRelayContext } from '../context/RelayContext'
 import { db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { toast } from 'sonner'
+import { KIND_DM } from '../lib/kinds'
 
 export function useCheckOffers() {
   const { subscribe } = useRelayContext()
@@ -31,7 +32,7 @@ export function useCheckOffers() {
 
       if (makerKey !== makerKeyRef.current) {
         makerKeyRef.current = makerKey
-        makerUnsub = subscribe('check-offers-maker', [{ kinds: [14], '#a': makerATags }], async event => {
+        makerUnsub = subscribe('check-offers-maker', [{ kinds: [KIND_DM], '#a': makerATags }], async event => {
           if (!window.nostr?.nip44) { toast.error('nostr extension does not support NIP-44'); return }
 
           const plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)
@@ -76,7 +77,7 @@ export function useCheckOffers() {
 
       if (takerKey !== takerKeyRef.current) {
         takerKeyRef.current = takerKey
-        takerUnsub = subscribe('check-offers-taker', [{ kinds: [14], '#a': takerATags }], async event => {
+        takerUnsub = subscribe('check-offers-taker', [{ kinds: [KIND_DM], '#a': takerATags }], async event => {
           if (!window.nostr?.nip44) { toast.error('nostr extension does not support NIP-44'); return }
 
           const plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)

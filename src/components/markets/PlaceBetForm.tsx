@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Market } from '../../lib/market'
 import { randomHex } from '../../lib/market'
+import { KIND_OFFER } from '../../lib/kinds'
 import { useRelayContext } from '../../context/RelayContext'
 import { db } from '../../db'
 import { toast } from 'sonner'
@@ -30,7 +31,7 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
       const offerId = randomHex(16)
 
       const unsigned = {
-        kind: 30051,
+        kind: KIND_OFFER,
         pubkey,
         created_at: Math.floor(Date.now() / 1000),
         tags: [

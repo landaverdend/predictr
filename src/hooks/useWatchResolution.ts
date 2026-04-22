@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { Contract } from '../db'
 import { db } from '../db'
 import { useRelayContext } from '../context/RelayContext'
+import { KIND_RESOLUTION } from '../lib/kinds'
 
 export function useWatchResolution(contracts: Contract[]) {
   const { subscribe } = useRelayContext()
@@ -14,7 +15,7 @@ export function useWatchResolution(contracts: Contract[]) {
 
     const unsub = subscribe(
       'resolution-watch',
-      [{ kinds: [8052], '#e': announcementIds }],
+      [{ kinds: [KIND_RESOLUTION], '#e': announcementIds }],
       async event => {
         const announcementEventId = event.tags.find(t => t[0] === 'e')?.[1]
         if (!announcementEventId) return

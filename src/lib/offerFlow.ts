@@ -1,4 +1,4 @@
-
+import { KIND_OFFER, KIND_DM } from './kinds'
 import type { NostrEvent } from 'nostr-tools'
 import { SigHash } from '@scure/btc-signer'
 import type { Contract } from '../db'
@@ -42,7 +42,7 @@ export async function sendTakeRequest(
   const ciphertext = await window.nostr.nip44.encrypt(offer.makerPubkey, payload)
 
   const dmSigned = await window.nostr.signEvent({
-    kind: 14,
+    kind: KIND_DM,
     pubkey: takerPubkey,
     created_at: Math.floor(now / 1000),
     tags: [['p', offer.makerPubkey], ['a', `30051:${offer.makerPubkey}:${offer.id}`]],
@@ -133,7 +133,7 @@ export async function sendFundingPsbt(
   const now = Date.now()
 
   const signed = await window.nostr.signEvent({
-    kind: 14,
+    kind: KIND_DM,
     pubkey: makerPubkey,
     created_at: Math.floor(now / 1000),
     tags: [['p', taker.taker_pubkey], ['a', `30051:${makerPubkey}:${contract.id}`]],

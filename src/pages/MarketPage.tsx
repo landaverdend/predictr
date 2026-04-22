@@ -7,6 +7,7 @@ import { parseMarket, parseOffer, tag } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import type { Resolution } from './MarketsPage'
 import { MarketDetail } from '../components/markets/MarketDetail'
+import { KIND_MARKET_ANNOUNCEMENT, KIND_OFFER, KIND_RESOLUTION } from '../lib/kinds'
 
 export default function MarketPage() {
   const { marketId } = useParams<{ marketId: string }>()
@@ -24,14 +25,14 @@ export default function MarketPage() {
     const unsub = subscribe(
       `market-page:${marketId}`,
       [
-        { kinds: [8050], '#d': [marketId] },
-        { kinds: [30051] },
-        { kinds: [8052], '#d': [marketId] },
+        { kinds: [KIND_MARKET_ANNOUNCEMENT], '#d': [marketId] },
+        { kinds: [KIND_OFFER] },
+        { kinds: [KIND_RESOLUTION], '#d': [marketId] },
       ],
       (event: NostrEvent) => {
-        if (event.kind === 8050) {
+        if (event.kind === KIND_MARKET_ANNOUNCEMENT) {
           setMarket(parseMarket(event))
-        } else if (event.kind === 30051) {
+        } else if (event.kind === KIND_OFFER) {
           const mid = tag(event, 'm') || tag(event, 'market_id')
           if (mid !== marketId) return
           const offer = parseOffer(event)
@@ -40,7 +41,7 @@ export default function MarketPage() {
             if (idx >= 0) { const u = [...prev]; u[idx] = offer; return u }
             return [...prev, offer]
           })
-        } else if (event.kind === 8052) {
+        } else if (event.kind === KIND_RESOLUTION) {
           const outcome = tag(event, 'outcome') as 'YES' | 'NO'
           const preimage = tag(event, 'preimage')
           if (outcome) setResolution({ outcome, preimage })

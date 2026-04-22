@@ -6,6 +6,7 @@ import { useProfiles } from '../hooks/useProfiles'
 import { parseMarket, parseOffer, computeStats, takerStake, tag, truncate, timeAgo } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import { Avatar } from '../components/Avatar'
+import { KIND_MARKET_ANNOUNCEMENT, KIND_OFFER } from '../lib/kinds'
 
 function StatPill({ label, value }: { label: string; value: string }) {
   return (
@@ -85,12 +86,12 @@ export default function UserPage() {
 
     const unsub = subscribe(
       `user-page:${pubkey}`,
-      [{ kinds: [8050, 30051], authors: [pubkey] }],
+      [{ kinds: [KIND_MARKET_ANNOUNCEMENT, KIND_OFFER], authors: [pubkey] }],
       (event: NostrEvent) => {
-        if (event.kind === 8050) {
+        if (event.kind === KIND_MARKET_ANNOUNCEMENT) {
           const market = parseMarket(event)
           setMarkets(prev => ({ ...prev, [market.id]: market }))
-        } else if (event.kind === 30051) {
+        } else if (event.kind === KIND_OFFER) {
           const offer = parseOffer(event)
           const marketId = tag(event, 'm') || tag(event, 'market_id')
           setUserOffers(prev => {

@@ -3,6 +3,7 @@ import type { Contract } from '../db'
 import { db } from '../db'
 import { buildContractOutputScripts } from '../lib/contract'
 import { useElectrum } from './useElectrum'
+import { KIND_OFFER } from '../lib/kinds'
 import { useRelayContext } from '../context/RelayContext'
 import { toast } from 'sonner'
 
@@ -44,7 +45,7 @@ export function useWatchFunding(contracts: Contract[]) {
       if (contract.id && window.nostr) {
         const pubkey = await window.nostr.getPublicKey()
         const signed = await window.nostr.signEvent({
-          kind: 30051,
+          kind: KIND_OFFER,
           pubkey,
           created_at: Math.floor(Date.now() / 1000),
           tags: [

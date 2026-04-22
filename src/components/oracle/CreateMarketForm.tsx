@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRelayContext } from '../../context/RelayContext'
 import { db } from '../../db'
+import { KIND_MARKET_ANNOUNCEMENT } from '../../lib/kinds'
 
 function randomHex(bytes: number): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
@@ -93,7 +94,7 @@ export function CreateMarketForm() {
       const now = Date.now()
 
       const signed = await window.nostr.signEvent({
-        kind: 8050,
+        kind: KIND_MARKET_ANNOUNCEMENT,
         pubkey,
         created_at: Math.floor(now / 1000),
         tags: [

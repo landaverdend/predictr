@@ -6,6 +6,7 @@ import { useElectrumContext } from '../context/ElectrumContext'
 import { parseMarket, parseOffer, tag } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import { MarketGrid } from '../components/markets/MarketGrid'
+import { KIND_MARKET_ANNOUNCEMENT, KIND_OFFER, KIND_RESOLUTION } from '../lib/kinds'
 
 export type Resolution = { outcome: 'YES' | 'NO'; preimage: string }
 
@@ -20,12 +21,12 @@ export default function MarketsPage() {
   useEffect(() => {
     const unsub = subscribe(
       'markets-feed',
-      [{ kinds: [8050, 30051, 8052] }],
+      [{ kinds: [KIND_MARKET_ANNOUNCEMENT, KIND_OFFER, KIND_RESOLUTION] }],
       (event: NostrEvent) => {
-        if (event.kind === 8050) {
+        if (event.kind === KIND_MARKET_ANNOUNCEMENT) {
           const market = parseMarket(event)
           setMarkets(prev => ({ ...prev, [market.id]: market }))
-        } else if (event.kind === 30051) {
+        } else if (event.kind === KIND_OFFER) {
           const offer = parseOffer(event)
           const marketId = tag(event, 'm') || tag(event, 'market_id')
           setOffers(prev => {
@@ -38,7 +39,7 @@ export default function MarketsPage() {
             }
             return { ...prev, [marketId]: [...existing, offer] }
           })
-        } else if (event.kind === 8052) {
+        } else if (event.kind === KIND_RESOLUTION) {
           const marketId = tag(event, 'd')
           const outcome = tag(event, 'outcome') as 'YES' | 'NO'
           const preimage = tag(event, 'preimage')
