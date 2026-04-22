@@ -25,22 +25,18 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
     >
       <div className="relative">
         <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} />
-        {isResolved && (
-          <div className="absolute top-3 right-3">
-            <span className={`text-[10px] font-medium px-2 py-0.5 rounded ${resolution!.outcome === 'YES' ? 'bg-positive/20 text-positive border border-positive/30' : 'bg-negative/20 text-negative border border-negative/30'}`}>
-              resolved {resolution!.outcome}
-            </span>
-          </div>
-        )}
-        {!isResolved && isPastDeadline && (
-          <div className="absolute top-3 right-3">
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-ink/40 text-white/70">pending</span>
-          </div>
-        )}
       </div>
       <div className="p-5 space-y-4">
         <div className="flex items-start gap-2">
           <p className="text-sm font-medium leading-snug flex-1">{market.question}</p>
+          {isResolved && (
+            <span className={`shrink-0 text-[10px] font-medium px-2 py-0.5 rounded ${resolution!.outcome === 'YES' ? 'bg-positive/20 text-positive border border-positive/30' : 'bg-negative/20 text-negative border border-negative/30'}`}>
+              resolved {resolution!.outcome}
+            </span>
+          )}
+          {!isResolved && isPastDeadline && (
+            <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded bg-ink/40 text-white/70">pending</span>
+          )}
         </div>
         <button
           onClick={e => { e.stopPropagation(); navigate(`/user/${market.pubkey}`) }}

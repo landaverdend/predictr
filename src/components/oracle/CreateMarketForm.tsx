@@ -20,6 +20,8 @@ export function CreateMarketForm() {
   const [description, setDescription] = useState('')
   const [resolutionBlockheight, setResolutionBlockheight] = useState('')
   const [imageUri, setImageUri] = useState('')
+  const [imageUploading, setImageUploading] = useState(false)
+  const [imageError, setImageError] = useState('')
   const [relays, setRelays] = useState<string[]>(savedRelays)
   const [relayInput, setRelayInput] = useState('')
 
@@ -29,6 +31,39 @@ export function CreateMarketForm() {
   }, [savedRelays.join(',')])
   const [status, setStatus] = useState<'idle' | 'publishing' | 'done' | 'error'>('idle')
   const [error, setError] = useState('')
+
+  async function handleImageUpload(file: File) {
+    if (!window.nostr) { setImageError('no nostr extension'); return }
+    setImageUploading(true)
+    setImageError('')
+    try {
+      const uploadUrl = 'https://nostr.build/api/v2/nip96/upload'
+      const pubkey = await window.nostr.getPublicKey()
+      const authEvent = await window.nostr.signEvent({
+        kind: 27235,
+        pubkey,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [['u', uploadUrl], ['method', 'POST']],
+        content: '',
+      })
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { Authorization: `Nostr ${btoa(JSON.stringify(authEvent))}` },
+        body: form,
+      })
+      if (!res.ok) throw new Error(`upload failed: ${res.status}`)
+      const data = await res.json()
+      const url = data.nip94_event?.tags?.find((t: string[]) => t[0] === 'url')?.[1]
+      if (!url) throw new Error('no url in response')
+      setImageUri(url)
+    } catch (err) {
+      setImageError(err instanceof Error ? err.message : 'upload failed')
+    } finally {
+      setImageUploading(false)
+    }
+  }
 
   function addRelay() {
     const url = relayInput.trim()
@@ -140,21 +175,35 @@ export function CreateMarketForm() {
         <label className="text-xs text-ink/50 uppercase tracking-wider">
           image <span className="normal-case text-ink/30">(optional)</span>
         </label>
-        <input
-          type="url"
-          placeholder="https://example.com/image.jpg"
-          value={imageUri}
-          onChange={e => setImageUri(e.target.value)}
-          className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
-        />
-        {imageUri && (
-          <img
-            src={imageUri}
-            alt="preview"
-            onError={e => (e.currentTarget.style.display = 'none')}
-            className="mt-2 w-full h-36 object-cover rounded-lg border border-ink/10"
-          />
+        {imageUri ? (
+          <div className="relative">
+            <img
+              src={imageUri}
+              alt="preview"
+              className="w-full h-36 object-cover rounded-lg border border-ink/10"
+            />
+            <button
+              type="button"
+              onClick={() => setImageUri('')}
+              className="absolute top-2 right-2 text-xs bg-base/80 border border-ink/20 rounded px-2 py-1 text-ink/60 hover:text-ink transition-colors"
+            >
+              remove
+            </button>
+          </div>
+        ) : (
+          <label className={`flex flex-col items-center justify-center w-full h-24 border border-dashed border-ink/20 rounded-lg cursor-pointer hover:border-ink/40 transition-colors ${imageUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            <span className="text-xs text-ink/30">
+              {imageUploading ? 'uploading…' : 'click to upload via nostr.build'}
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handleImageUpload(f) }}
+            />
+          </label>
         )}
+        {imageError && <p className="text-xs text-negative">{imageError}</p>}
       </div>
 
       <div className="space-y-1.5">
