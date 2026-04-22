@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext, DEFAULT_ELECTRUM_URL } from '../context/ElectrumContext'
+import { DEFAULT_RELAY } from '../lib/config'
 import { db } from '../db'
 
 type PingStatus = 'checking' | 'ok' | 'fail'
@@ -29,6 +30,7 @@ function RelayManager() {
   const [saving, setSaving] = useState(false)
   const [pingStatus, setPingStatus] = useState<Record<string, PingStatus>>({})
 
+
   useEffect(() => { setDraft(relays) }, [relays.join(',')])
 
   // ping each url in the draft whenever the list changes
@@ -44,12 +46,15 @@ function RelayManager() {
 
   const isDirty = draft.join(',') !== relays.join(',')
 
+  function handleResetToDefault() {
+    setDraft(prev => [...new Set([...prev, DEFAULT_RELAY])])
+  }
+
   async function handleImportFromExtension() {
     if (!window.nostr?.getRelays) return
     const map = await window.nostr.getRelays()
     const urls = Object.keys(map).filter(url => { try { return Boolean(new URL(url).hostname) } catch { return false } })
-    if (!urls.length) return
-    setDraft(prev => [...new Set([...prev, ...urls])])
+    if (urls.length) setDraft(prev => [...new Set([...prev, ...urls])])
   }
 
   function handleAdd() {
@@ -134,14 +139,20 @@ function RelayManager() {
         )}
       </div>
 
-      {window.nostr?.getRelays && (
+      <div className="flex gap-3">
+        <button
+          onClick={handleResetToDefault}
+          className="text-xs text-ink/40 hover:text-ink/70 underline transition-colors"
+        >
+          add default relay
+        </button>
         <button
           onClick={handleImportFromExtension}
           className="text-xs text-ink/40 hover:text-ink/70 underline transition-colors"
         >
           import from extension
         </button>
-      )}
+      </div>
 
       <div className="flex gap-2">
         <input
