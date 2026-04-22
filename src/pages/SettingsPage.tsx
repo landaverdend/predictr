@@ -44,6 +44,14 @@ function RelayManager() {
 
   const isDirty = draft.join(',') !== relays.join(',')
 
+  async function handleImportFromExtension() {
+    if (!window.nostr?.getRelays) return
+    const map = await window.nostr.getRelays()
+    const urls = Object.keys(map).filter(url => { try { return Boolean(new URL(url).hostname) } catch { return false } })
+    if (!urls.length) return
+    setDraft(prev => [...new Set([...prev, ...urls])])
+  }
+
   function handleAdd() {
     const url = input.trim()
     if (!url || draft.includes(url)) return
@@ -125,6 +133,15 @@ function RelayManager() {
           <p className="text-xs text-ink/30">no relays configured</p>
         )}
       </div>
+
+      {window.nostr?.getRelays && (
+        <button
+          onClick={handleImportFromExtension}
+          className="text-xs text-ink/40 hover:text-ink/70 underline transition-colors"
+        >
+          import from extension
+        </button>
+      )}
 
       <div className="flex gap-2">
         <input
