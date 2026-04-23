@@ -101,6 +101,17 @@ export function timeAgo(ts: number) {
   return `${Math.floor(diff / 3600)}h ago`
 }
 
+export function isValidMarket(m: Market): boolean {
+  return (
+    !!m.id &&
+    !!m.question &&
+    !!m.yesHash &&
+    !!m.noHash &&
+    Number.isFinite(m.resolutionBlockheight) &&
+    m.resolutionBlockheight > 0
+  )
+}
+
 export function randomHex(bytes: number) {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
     .map(b => b.toString(16).padStart(2, '0'))

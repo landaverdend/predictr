@@ -5,6 +5,8 @@ export type NostrProfile = {
   name?: string
   picture?: string
   about?: string
+  banner?: string
+  website?: string
 }
 
 // Module-level cache shared across all hook instances

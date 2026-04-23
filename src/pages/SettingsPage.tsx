@@ -28,6 +28,7 @@ function RelayManager() {
   const [savedValue, setSavedValue] = useState('')   // for escape-to-cancel
   const [input, setInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [importMsg, setImportMsg] = useState('')
   const [pingStatus, setPingStatus] = useState<Record<string, PingStatus>>({})
 
 
@@ -51,10 +52,30 @@ function RelayManager() {
   }
 
   async function handleImportFromExtension() {
-    if (!window.nostr?.getRelays) return
-    const map = await window.nostr.getRelays()
-    const urls = Object.keys(map).filter(url => { try { return Boolean(new URL(url).hostname) } catch { return false } })
-    if (urls.length) setDraft(prev => [...new Set([...prev, ...urls])])
+    if (!window.nostr?.getRelays) {
+      setImportMsg('extension does not support getRelays')
+      setTimeout(() => setImportMsg(''), 3000)
+      return
+    }
+    try {
+      const map = await window.nostr.getRelays()
+      const urls = Object.keys(map).filter(url => { try { return Boolean(new URL(url).hostname) } catch { return false } })
+      if (urls.length) {
+        setDraft(prev => {
+          const next = [...new Set([...prev, ...urls])]
+          const added = next.length - prev.length
+          setImportMsg(added > 0 ? `imported ${added} relay${added > 1 ? 's' : ''}` : 'no new relays found')
+          setTimeout(() => setImportMsg(''), 3000)
+          return next
+        })
+      } else {
+        setImportMsg('no relays found in extension')
+        setTimeout(() => setImportMsg(''), 3000)
+      }
+    } catch {
+      setImportMsg('import failed')
+      setTimeout(() => setImportMsg(''), 3000)
+    }
   }
 
   function handleAdd() {
@@ -139,7 +160,7 @@ function RelayManager() {
         )}
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex items-center gap-3">
         <button
           onClick={handleResetToDefault}
           className="text-xs text-ink/40 hover:text-ink/70 underline transition-colors"
@@ -152,6 +173,9 @@ function RelayManager() {
         >
           import from extension
         </button>
+        {importMsg && (
+          <span className="text-xs text-ink/40">{importMsg}</span>
+        )}
       </div>
 
       <div className="flex gap-2">

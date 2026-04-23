@@ -86,42 +86,6 @@ export function RelayProvider({ children }: { children: React.ReactNode }) {
     })
   }, [])
 
-  // ── NIP-65 Kind 10002 seeding ────────────────────────────────────────────
-
-  useEffect(() => {
-    if (relays.length === 0 || !window.nostr) return
-    let cancelled = false
-
-    window.nostr.getPublicKey().then(pubkey => {
-      if (cancelled) return
-      const sub = pool.subscribeMany(
-        relays,
-        { kinds: [10002], authors: [pubkey], limit: 1 },
-        {
-          onevent(event) {
-            const discovered = event.tags
-              .filter(t => t[0] === 'r')
-              .map(t => t[1])
-              .filter(url => {
-                try { return Boolean(new URL(url).hostname) } catch { return false }
-              })
-            if (discovered.length === 0) return
-            setRelaysState(prev => {
-              const merged = [...new Set([...prev, ...discovered])]
-              if (merged.length === prev.length) return prev
-              saveRelays(merged)
-              return merged
-            })
-          },
-        }
-      )
-      setTimeout(() => sub.close(), 10_000)
-    }).catch(() => {})
-
-    return () => { cancelled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [relays.length > 0])
-
   // ── re-subscribe all when relay list changes ─────────────────────────────
 
   useEffect(() => {

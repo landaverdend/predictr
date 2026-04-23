@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { NostrEvent } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext } from '../context/ElectrumContext'
-import { parseMarket, parseOffer, tag } from '../lib/market'
+import { parseMarket, parseOffer, tag, isValidMarket } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import { MarketGrid } from '../components/markets/MarketGrid'
 import { KIND_MARKET_ANNOUNCEMENT, KIND_OFFER, KIND_RESOLUTION } from '../lib/kinds'
@@ -25,6 +25,7 @@ export default function MarketsPage() {
       (event: NostrEvent) => {
         if (event.kind === KIND_MARKET_ANNOUNCEMENT) {
           const market = parseMarket(event)
+          if (!isValidMarket(market)) return
           setMarkets(prev => ({ ...prev, [market.id]: market }))
         } else if (event.kind === KIND_OFFER) {
           const offer = parseOffer(event)
