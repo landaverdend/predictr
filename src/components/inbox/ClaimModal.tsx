@@ -3,6 +3,7 @@ import { type Contract } from '../../db'
 import { claimFunding } from '../../lib/spend'
 import { useElectrum } from '../../hooks/useElectrum'
 import { useWallet } from '../../hooks/useWallet'
+import { UnlockModal } from '../UnlockModal'
 
 function truncateAddress(addr: string, keep = 10): string {
   if (addr.length <= keep * 2) return addr
@@ -21,6 +22,7 @@ export function ClaimModal({ contract, onClose }: Props) {
   const [useCustom, setUseCustom] = useState(false)
   const [claiming, setClaiming] = useState(false)
   const [error, setError] = useState('')
+  const [showUnlock, setShowUnlock] = useState(false)
   const { client } = useElectrum()
 
   const totalPot = contract.makerStake + contract.takerStake
@@ -35,6 +37,11 @@ export function ClaimModal({ contract, onClose }: Props) {
       await claimFunding(contract, client, payoutAddress)
       onClose()
     } catch (e) {
+      if (e instanceof Error && e.message.includes('wallet locked')) {
+        setClaiming(false)
+        setShowUnlock(true)
+        return
+      }
       setError(e instanceof Error ? e.message : 'claim failed')
     } finally {
       setClaiming(false)
@@ -127,6 +134,9 @@ export function ClaimModal({ contract, onClose }: Props) {
         </div>
 
         {error && <p className="text-xs text-negative">{error}</p>}
+        {showUnlock && (
+          <UnlockModal onUnlocked={() => { setShowUnlock(false); handleClaim() }} onClose={() => setShowUnlock(false)} />
+        )}
 
         <div className="flex gap-3">
           <button

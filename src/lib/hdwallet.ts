@@ -20,19 +20,19 @@ export function isValidMnemonic(mnemonic: string): boolean {
   return validateMnemonic(mnemonic.trim(), wordlist)
 }
 
-export function deriveKeys(mnemonic: string, count = HD_KEY_COUNT): WalletKey[] {
+export function deriveKeys(mnemonic: string, count = HD_KEY_COUNT, startIdx = 0): WalletKey[] {
   const seed = mnemonicToSeedSync(mnemonic)
   const root = HDKey.fromMasterSeed(seed)
   const account = root.derive(DERIVATION_PATH)
   const now = Date.now()
 
   return Array.from({ length: count }, (_, i) => {
-    const child = account.deriveChild(i)
+    const child = account.deriveChild(startIdx + i)
     const privkey = child.privateKey!
     const pubkey = child.publicKey!.slice(1) // x-only (strip 0x02/0x03 prefix)
     const { address } = p2tr(pubkey, undefined, REGTEST)
     return {
-      id: String(i),
+      id: String(startIdx + i),
       privkey: toHex(privkey),
       pubkey: toHex(pubkey),
       address: address!,

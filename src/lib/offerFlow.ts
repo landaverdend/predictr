@@ -7,6 +7,7 @@ import type { WalletUTXO } from '../hooks/useWallet'
 import type { TakeRequest, TakerInput } from './types'
 import { db } from '../db'
 import { hexToBytes } from './utils'
+import { getDecryptedPrivkey } from './pinCrypto'
 import { Market, Offer, takerStake } from './market'
 
 /**
@@ -125,7 +126,8 @@ export async function sendFundingPsbt(
     },
   )
 
-  tx.signIdx(hexToBytes(maker.funding.key.privkey), 0, [SigHash.ALL_ANYONECANPAY])
+  const makerPrivkey = await getDecryptedPrivkey(maker.funding.key)
+  tx.signIdx(hexToBytes(makerPrivkey), 0, [SigHash.ALL_ANYONECANPAY])
   const psbt = btoa(String.fromCharCode(...tx.toPSBT()))
 
   const payload = JSON.stringify({ type: 'psbt_offer', funding_psbt: psbt, maker_wallet_pubkey: makerWalletPubkey })

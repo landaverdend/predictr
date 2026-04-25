@@ -4,6 +4,8 @@ import { db } from '../db'
 import { buildContractOutputScripts, REGTEST } from './contract'
 import type { ElectrumWS } from './electrum'
 import { hexToBytes, equalBytes, REFUND_DELAY } from './utils'
+import type { WalletUTXO } from '../hooks/useWallet'
+import { getDecryptedPrivkey } from './pinCrypto'
 
 // Leaf order after taprootWalkTree on [yesLeaf, noLeaf, cltvLeaf]: [no=0, cltv=1, yes=2]
 const YES_LEAF_IDX = 2
@@ -90,7 +92,8 @@ export async function signAndBroadcastFunding(
     tapInternalKey: hexToBytes(walletKey.pubkey),
   })
 
-  tx.signIdx(hexToBytes(walletKey.privkey), 1)
+  const takerPrivkey = await getDecryptedPrivkey(walletKey)
+  tx.signIdx(hexToBytes(takerPrivkey), 1)
   tx.finalize()
 
   const txid = await electrum.broadcastTx(tx.hex)
@@ -135,7 +138,8 @@ export async function refundFunding(contract: Contract, electrum: ElectrumWS): P
   })
   tx.addOutputAddress(walletKey.address, BigInt(stake - 1000), REGTEST)
 
-  tx.signIdx(hexToBytes(walletKey.privkey), 0)
+  const refundPrivkey = await getDecryptedPrivkey(walletKey)
+  tx.signIdx(hexToBytes(refundPrivkey), 0)
   tx.finalize()
 
   const txid = await electrum.broadcastTx(tx.hex)
@@ -177,7 +181,7 @@ export async function claimFunding(
 
   const leafIdx = isMakerWinner ? YES_LEAF_IDX : NO_LEAF_IDX
   const preimageBytes = hexToBytes(contract.winningPreimage)
-  const privkeyBytes = hexToBytes(walletKey.privkey)
+  const privkeyBytes = hexToBytes(await getDecryptedPrivkey(walletKey))
   const totalAmount = contract.makerStake + contract.takerStake
 
   const tx = new Transaction({ allowUnknownOutputs: true, allowUnknownInputs: true })
@@ -218,4 +222,73 @@ export async function claimFunding(
   const txid = await electrum.broadcastTx(tx.hex)
   await db.contracts.update(contract.id, { claimTxid: txid, updatedAt: Date.now() })
   return txid
+}
+
+// ── send sats from wallet to an external address ─────────────────────────────
+
+const FEE_PER_INPUT = 200   // ~sats per p2tr input at 1 sat/vbyte on regtest
+const BASE_FEE = 500        // base overhead for outputs + tx header
+
+function estimateFee(numInputs: number): number {
+  return BASE_FEE + FEE_PER_INPUT * numInputs
+}
+
+function selectCoins(
+  utxos: WalletUTXO[],
+  target: number,
+): { selected: WalletUTXO[]; fee: number; change: number } | null {
+  // sort smallest first (minimize waste)
+  const sorted = [...utxos].sort((a, b) => a.utxo.value - b.utxo.value)
+  const selected: WalletUTXO[] = []
+  let sum = 0
+
+  for (const u of sorted) {
+    selected.push(u)
+    sum += u.utxo.value
+    const fee = estimateFee(selected.length)
+    if (sum >= target + fee) {
+      return { selected, fee, change: sum - target - fee }
+    }
+  }
+  return null
+}
+
+export async function sendFromWallet(
+  utxos: WalletUTXO[],
+  toAddress: string,
+  amountSats: number,
+  changeAddress: string,
+  electrum: ElectrumWS,
+): Promise<string> {
+  if (amountSats <= 0) throw new Error('amount must be positive')
+
+  const result = selectCoins(utxos, amountSats)
+  if (!result) throw new Error('insufficient funds')
+
+  const { selected, fee, change } = result
+
+  const tx = new Transaction({ allowUnknownOutputs: true })
+
+  for (const { utxo, key, script } of selected) {
+    tx.addInput({
+      txid: utxo.tx_hash,
+      index: utxo.tx_pos,
+      witnessUtxo: { script, amount: BigInt(utxo.value) },
+      tapInternalKey: hexToBytes(key.pubkey),
+    })
+  }
+
+  tx.addOutputAddress(toAddress, BigInt(amountSats), REGTEST)
+
+  if (change > 546) {
+    tx.addOutputAddress(changeAddress, BigInt(change), REGTEST)
+  }
+
+  for (let i = 0; i < selected.length; i++) {
+    const privkey = await getDecryptedPrivkey(selected[i].key)
+    tx.signIdx(hexToBytes(privkey), i)
+  }
+
+  tx.finalize()
+  return electrum.broadcastTx(tx.hex)
 }

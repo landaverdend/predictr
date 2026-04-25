@@ -20,23 +20,33 @@ export function useCheckOffers() {
 
   const makerKeyRef = useRef('')
   const takerKeyRef = useRef('')
+  // Persist unsub functions in refs so closing one subscription on re-render
+  // doesn't accidentally kill the other when only one filter set changed.
+  const makerUnsubRef = useRef<(() => void) | undefined>(undefined)
+  const takerUnsubRef = useRef<(() => void) | undefined>(undefined)
 
   useEffect(() => {
-    let makerUnsub: (() => void) | undefined
-    let takerUnsub: (() => void) | undefined
+    let cancelled = false
 
     window.nostr?.getPublicKey().then(pubkey => {
+      if (cancelled) return
+
       // ── maker subscription ───────────────────────────────────────────────
       const makerATags = pendingMakerContracts.map(c => `30051:${pubkey}:${c.id}`)
       const makerKey = [...makerATags].sort().join(',')
 
       if (makerKey !== makerKeyRef.current) {
         makerKeyRef.current = makerKey
-        makerUnsub = subscribe('check-offers-maker', [{ kinds: [KIND_DM], '#a': makerATags }], async event => {
+        makerUnsubRef.current = subscribe('check-offers-maker', [{ kinds: [KIND_DM], '#a': makerATags }], async event => {
           if (!window.nostr?.nip44) { toast.error('nostr extension does not support NIP-44'); return }
 
-          const plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)
-          const msg = JSON.parse(plaintext) as { type: string;[k: string]: unknown }
+          let plaintext: string
+          try {
+            plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)
+            if (!plaintext) return
+          } catch { return }
+          let msg: { type: string;[k: string]: unknown }
+          try { msg = JSON.parse(plaintext) } catch { return }
           const contractId = event.tags.find(t => t[0] === 'a')?.[1].split(':')[2] ?? ''
           const now = Date.now()
 
@@ -77,11 +87,16 @@ export function useCheckOffers() {
 
       if (takerKey !== takerKeyRef.current) {
         takerKeyRef.current = takerKey
-        takerUnsub = subscribe('check-offers-taker', [{ kinds: [KIND_DM], '#a': takerATags }], async event => {
+        takerUnsubRef.current = subscribe('check-offers-taker', [{ kinds: [KIND_DM], '#a': takerATags }], async event => {
           if (!window.nostr?.nip44) { toast.error('nostr extension does not support NIP-44'); return }
 
-          const plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)
-          const msg = JSON.parse(plaintext) as { type: string;[k: string]: unknown }
+          let plaintext: string
+          try {
+            plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)
+            if (!plaintext) return
+          } catch { return }
+          let msg: { type: string;[k: string]: unknown }
+          try { msg = JSON.parse(plaintext) } catch { return }
           const contractId = event.tags.find(t => t[0] === 'a')?.[1].split(':')[2] ?? ''
           const now = Date.now()
 
@@ -123,6 +138,11 @@ export function useCheckOffers() {
       }
     })
 
-    return () => { makerUnsub?.(); takerUnsub?.() }
+    return () => { cancelled = true }
   }, [subscribe, pendingMakerContracts, pendingTakerContracts])
+
+  // Clean up both subscriptions when the hook unmounts.
+  useEffect(() => {
+    return () => { makerUnsubRef.current?.(); takerUnsubRef.current?.() }
+  }, [])
 }

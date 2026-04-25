@@ -17,6 +17,9 @@ export function useWallet() {
   const { client } = useElectrum()
   const [utxosByAddress, setUtxosByAddress] = useState<Record<string, ElectrumUTXO[]>>({})
   const [loading, setLoading] = useState(false)
+  const [tick, setTick] = useState(0)
+
+  function refresh() { setTick(t => t + 1) }
 
   useEffect(() => {
     if (!keys?.length || !client) return
@@ -29,7 +32,7 @@ export function useWallet() {
       setUtxosByAddress(Object.fromEntries(results))
       setLoading(false)
     })
-  }, [keys, client])
+  }, [keys, client, tick])
 
   function allUtxos(): WalletUTXO[] {
     if (!keys) return []
@@ -47,5 +50,5 @@ export function useWallet() {
 
   const totalBalance = Object.values(utxosByAddress).flat().reduce((s, u) => s + u.value, 0)
 
-  return { keys: keys ?? [], utxosByAddress, allUtxos, pickUtxo, totalBalance, loading }
+  return { keys: keys ?? [], utxosByAddress, allUtxos, pickUtxo, totalBalance, loading, refresh }
 }

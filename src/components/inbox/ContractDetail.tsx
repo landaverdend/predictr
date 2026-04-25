@@ -5,6 +5,7 @@ import type { TakeRequest } from '../../lib/types'
 import { Field } from './Field'
 import { AcceptTakerModal } from './AcceptTakerModal'
 import { ClaimModal } from './ClaimModal'
+import { UnlockModal } from '../UnlockModal'
 import { useElectrum } from '../../hooks/useElectrum'
 import { signAndBroadcastFunding, refundFunding } from '../../lib/spend'
 import { REFUND_DELAY } from '../../lib/utils'
@@ -40,6 +41,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
 
   const [acceptingTaker, setAcceptingTaker] = useState<TakeRequest | null>(null)
   const [showClaim, setShowClaim] = useState(false)
+  const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null)
 
   const takeRequests = useLiveQuery(async () => {
     const msgs = await db.messages
@@ -62,6 +64,11 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
     try {
       await signAndBroadcastFunding(contract, client)
     } catch (e) {
+      if (e instanceof Error && e.message.includes('wallet locked')) {
+        setSigning(false)
+        setPendingAction(() => handleSignAndBroadcast)
+        return
+      }
       setSignError(e instanceof Error ? e.message : 'failed')
     } finally {
       setSigning(false)
@@ -85,6 +92,11 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
     try {
       await refundFunding(contract, client)
     } catch (e) {
+      if (e instanceof Error && e.message.includes('wallet locked')) {
+        setRefunding(false)
+        setPendingAction(() => handleRefund)
+        return
+      }
       setRefundError(e instanceof Error ? e.message : 'failed')
     } finally {
       setRefunding(false)
@@ -121,6 +133,20 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
               {statusLabel}
             </span>
           </div>
+
+          {/* Counterparty */}
+          {contract.counterpartyPubkey && (
+            <div className="flex items-center gap-3 py-3 border-y border-ink/5">
+              <Avatar pubkey={contract.counterpartyPubkey} size="lg" />
+              <div>
+                <p className="text-[10px] text-ink/30 uppercase tracking-wider mb-0.5">counterparty</p>
+                {counterpartyProfile?.name && (
+                  <p className="text-sm font-medium leading-tight">{counterpartyProfile.name}</p>
+                )}
+                <p className="text-xs font-mono text-ink/40 mt-0.5">{contract.counterpartyPubkey.slice(0, 20)}…</p>
+              </div>
+            </div>
+          )}
 
           {/* Our position */}
           <div>
@@ -277,6 +303,12 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
       )}
       {showClaim && (
         <ClaimModal contract={contract} onClose={() => setShowClaim(false)} />
+      )}
+      {pendingAction && (
+        <UnlockModal
+          onUnlocked={() => { setPendingAction(null); pendingAction() }}
+          onClose={() => setPendingAction(null)}
+        />
       )}
     </>
   )

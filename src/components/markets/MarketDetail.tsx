@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Market, Offer } from '../../lib/market'
 import type { Resolution } from '../../pages/MarketsPage'
@@ -8,32 +8,44 @@ import { PlaceBetForm } from './PlaceBetForm'
 import { TakeOfferModal } from './TakeOfferModal'
 import { Avatar } from '../Avatar'
 import { Input } from '../Input'
+import { useProfiles, type NostrProfile } from '../../hooks/useProfiles'
 
-function OfferRow({ offer, onTake }: { offer: Offer; onTake: () => void }) {
+function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProfile | undefined; onTake: () => void }) {
   const navigate = useNavigate()
+  const displayName = profile?.name ?? truncate(offer.makerPubkey)
+
   return (
-    <div className="border border-ink/10 rounded-lg px-5 py-4 flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <span className={`text-xs font-medium px-2.5 py-1 rounded ${offer.side === 'YES' ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative'}`}>
+    <div className="border border-ink/10 rounded-lg px-4 py-3.5 flex items-center gap-4">
+      {/* Maker identity */}
+      <button
+        onClick={() => navigate(`/user/${offer.makerPubkey}`)}
+        className="flex items-center gap-2.5 shrink-0 hover:opacity-75 transition-opacity"
+      >
+        <Avatar pubkey={offer.makerPubkey} size="md" />
+        <div className="text-left hidden sm:block">
+          <p className="text-xs font-medium text-ink/80 leading-tight">{displayName}</p>
+          <p className="text-[10px] font-mono text-ink/30 mt-0.5">{truncate(offer.makerPubkey)}</p>
+        </div>
+      </button>
+
+      {/* Bet details */}
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${offer.side === 'YES' ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative'}`}>
           {offer.side}
         </span>
-        <div>
-          <p className="text-sm font-mono">{offer.makerStake.toLocaleString()} sats</p>
-          <p className="text-xs text-ink/30 mt-0.5">
-            {offer.confidence}% confidence · {takerStake(offer).toLocaleString()} to take
+        <div className="min-w-0">
+          <p className="text-sm font-mono font-medium">{offer.makerStake.toLocaleString()} sats</p>
+          <p className="text-[11px] text-ink/30 mt-0.5 truncate">
+            {offer.confidence}% conf · {takerStake(offer).toLocaleString()} to take
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-5 text-xs text-ink/30">
-        <button
-          onClick={() => navigate(`/user/${offer.makerPubkey}`)}
-          className="font-mono hidden sm:block hover:text-ink/60 transition-colors"
-        >
-          {truncate(offer.makerPubkey)}
-        </button>
-        <span>{timeAgo(offer.createdAt)}</span>
+
+      {/* Time + action */}
+      <div className="flex items-center gap-3 shrink-0 text-xs text-ink/30">
+        <span className="hidden sm:block">{timeAgo(offer.createdAt)}</span>
         {offer.status === 'filled' ? (
-          <span className="text-xs text-ink/20 px-3 py-1.5">filled</span>
+          <span className="text-ink/20 px-3 py-1.5">filled</span>
         ) : (
           <button
             onClick={onTake}
@@ -59,6 +71,13 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
   const [placing, setPlacing] = useState(false)
   const [taking, setTaking] = useState<Offer | null>(null)
   const navigate = useNavigate()
+
+  const makerPubkeys = useMemo(
+    () => [...new Set(offers.map(o => o.makerPubkey))],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [offers.map(o => o.makerPubkey).join(',')],
+  )
+  const profiles = useProfiles(makerPubkeys)
 
   // filters
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
@@ -250,7 +269,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
         ) : (
           <div className="space-y-2">
             {filteredOffers.map(offer => (
-              <OfferRow key={offer.id} offer={offer} onTake={() => setTaking(offer)} />
+              <OfferRow key={offer.id} offer={offer} profile={profiles.get(offer.makerPubkey)} onTake={() => setTaking(offer)} />
             ))}
           </div>
         )}

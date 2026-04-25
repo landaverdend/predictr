@@ -6,6 +6,7 @@ import { useWallet, type WalletUTXO } from '../../hooks/useWallet'
 import { ChangeAddressPicker } from './ChangeAddressPicker'
 import type { TakeRequest } from '../../lib/types'
 import { sendFundingPsbt } from '../../lib/offerFlow'
+import { UnlockModal } from '../UnlockModal'
 
 // ── shared primitives ─────────────────────────────────────────────────────────
 
@@ -184,6 +185,7 @@ export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contr
   const [step, setStep] = useState<Step>('review')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
+  const [pendingFunding, setPendingFunding] = useState<{ funding: WalletUTXO; changeAddress: string } | null>(null)
   const { publish } = useRelayContext()
 
   const title = step === 'review' ? 'accept taker request' : 'your funding details'
@@ -195,6 +197,11 @@ export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contr
       await sendFundingPsbt(publish, contract, taker, { funding, changeAddress })
       onClose()
     } catch (e) {
+      if (e instanceof Error && e.message.includes('wallet locked')) {
+        setSending(false)
+        setPendingFunding({ funding, changeAddress })
+        return
+      }
       setError(e instanceof Error ? e.message : 'failed to send PSBT')
     } finally {
       setSending(false)
@@ -202,6 +209,7 @@ export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contr
   }
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-base/70 backdrop-blur-sm" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md bg-surface border border-ink/10 rounded-xl p-6 space-y-5">
@@ -227,5 +235,13 @@ export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contr
 
       </div>
     </div>
+
+    {pendingFunding && (
+      <UnlockModal
+        onUnlocked={() => { const p = pendingFunding; setPendingFunding(null); handleConfirm(p.funding, p.changeAddress) }}
+        onClose={() => setPendingFunding(null)}
+      />
+    )}
+    </>
   )
 }
