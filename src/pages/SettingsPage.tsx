@@ -193,12 +193,12 @@ function RelayManager() {
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleAdd()}
-          className="flex-1 bg-elevated border border-ink/10 rounded-lg px-4 py-2.5 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
+          className="flex-1 min-w-0 bg-elevated border border-ink/10 rounded-lg px-4 py-2.5 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
         />
         <button
           onClick={handleAdd}
           disabled={!input.trim()}
-          className="px-4 py-2.5 text-sm border border-ink/20 rounded-lg hover:bg-ink/5 disabled:opacity-30 transition-colors"
+          className="shrink-0 px-4 py-2.5 text-sm border border-ink/20 rounded-lg hover:bg-ink/5 disabled:opacity-30 transition-colors"
         >
           add
         </button>
@@ -274,12 +274,12 @@ function BunkerManager() {
               value={uri}
               onChange={e => { setUri(e.target.value); setError('') }}
               onKeyDown={e => e.key === 'Enter' && handleConnect()}
-              className="flex-1 bg-elevated border border-ink/10 rounded-lg px-4 py-2.5 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
+              className="flex-1 min-w-0 bg-elevated border border-ink/10 rounded-lg px-4 py-2.5 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
             />
             <button
               onClick={handleConnect}
               disabled={!uri.trim() || status === 'connecting'}
-              className="px-4 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-light disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              className="shrink-0 px-4 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-light disabled:opacity-30 disabled:cursor-not-allowed transition-all"
             >
               {status === 'connecting' ? 'connecting…' : 'connect'}
             </button>
@@ -410,7 +410,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full space-y-8">
+    <main className="flex-1 px-4 sm:px-6 py-10 max-w-2xl mx-auto w-full space-y-8">
       <div>
         <h1 className="text-2xl font-bold mb-1">settings</h1>
         <p className="text-ink/40 text-sm">app configuration and account</p>
