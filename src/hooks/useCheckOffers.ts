@@ -4,6 +4,7 @@ import { db } from '../db'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { toast } from 'sonner'
 import { KIND_DM } from '../lib/kinds'
+import { getNostr } from '../lib/signer'
 
 export function useCheckOffers() {
   const { subscribe } = useRelayContext()
@@ -28,7 +29,7 @@ export function useCheckOffers() {
   useEffect(() => {
     let cancelled = false
 
-    window.nostr?.getPublicKey().then(pubkey => {
+    getNostr()?.getPublicKey().then(pubkey => {
       if (cancelled) return
 
       // ── maker subscription ───────────────────────────────────────────────
@@ -38,11 +39,12 @@ export function useCheckOffers() {
       if (makerKey !== makerKeyRef.current) {
         makerKeyRef.current = makerKey
         makerUnsubRef.current = subscribe('check-offers-maker', [{ kinds: [KIND_DM], '#a': makerATags }], async event => {
-          if (!window.nostr?.nip44) { toast.error('nostr extension does not support NIP-44'); return }
+          const nostr = getNostr()
+          if (!nostr?.nip44) { toast.error('nostr signer does not support NIP-44'); return }
 
           let plaintext: string
           try {
-            plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)
+            plaintext = await nostr.nip44.decrypt(event.pubkey, event.content)
             if (!plaintext) return
           } catch { return }
           let msg: { type: string;[k: string]: unknown }
@@ -88,11 +90,12 @@ export function useCheckOffers() {
       if (takerKey !== takerKeyRef.current) {
         takerKeyRef.current = takerKey
         takerUnsubRef.current = subscribe('check-offers-taker', [{ kinds: [KIND_DM], '#a': takerATags }], async event => {
-          if (!window.nostr?.nip44) { toast.error('nostr extension does not support NIP-44'); return }
+          const nostr2 = getNostr()
+          if (!nostr2?.nip44) { toast.error('nostr signer does not support NIP-44'); return }
 
           let plaintext: string
           try {
-            plaintext = await window.nostr.nip44.decrypt(event.pubkey, event.content)
+            plaintext = await nostr2.nip44.decrypt(event.pubkey, event.content)
             if (!plaintext) return
           } catch { return }
           let msg: { type: string;[k: string]: unknown }

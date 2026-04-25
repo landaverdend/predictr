@@ -8,6 +8,10 @@ import { useWatchFunding } from './hooks/useWatchFunding'
 import { useWatchResolution } from './hooks/useWatchResolution'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
+import { reconnectBunker } from './lib/signer'
+
+// Restore bunker connection from localStorage on app load
+reconnectBunker().catch(() => {})
 
 import Navbar from './components/Navbar'
 import MarketsPage from './pages/MarketsPage'

@@ -1,4 +1,5 @@
 import { KIND_OFFER, KIND_DM } from './kinds'
+import { getNostr } from './signer'
 import type { NostrEvent } from 'nostr-tools'
 import { SigHash } from '@scure/btc-signer'
 import type { Contract } from '../db'
@@ -21,10 +22,11 @@ export async function sendTakeRequest(
   changeAddress: string,
   walletKeyId: string,
 ): Promise<void> {
-  if (!window.nostr) throw new Error('no nostr extension found')
-  if (!window.nostr.nip44) throw new Error('nostr extension does not support NIP-44')
+  const nostr = getNostr()
+  if (!nostr) throw new Error('no nostr signer found')
+  if (!nostr.nip44) throw new Error('nostr signer does not support NIP-44')
 
-  const takerPubkey = await window.nostr.getPublicKey()
+  const takerPubkey = await nostr.getPublicKey()
   const now = Date.now()
   const impliedTakerStake = takerStake(offer)
 
@@ -40,9 +42,9 @@ export async function sendTakeRequest(
   }
   const payload = JSON.stringify(takeRequest)
 
-  const ciphertext = await window.nostr.nip44.encrypt(offer.makerPubkey, payload)
+  const ciphertext = await nostr.nip44!.encrypt(offer.makerPubkey, payload)
 
-  const dmSigned = await window.nostr.signEvent({
+  const dmSigned = await nostr.signEvent({
     kind: KIND_DM,
     pubkey: takerPubkey,
     created_at: Math.floor(now / 1000),
@@ -101,9 +103,10 @@ export async function sendFundingPsbt(
   taker: TakeRequest,
   maker: { funding: WalletUTXO; changeAddress: string },
 ): Promise<void> {
-  if (!window.nostr?.nip44) throw new Error('nostr extension with NIP-44 required')
+  const nostr = getNostr()
+  if (!nostr?.nip44) throw new Error('nostr signer with NIP-44 required')
 
-  const makerPubkey = await window.nostr.getPublicKey()
+  const makerPubkey = await nostr.getPublicKey()
   const makerWalletPubkey = maker.funding.key.pubkey
 
   const tx = buildFundingTx(
@@ -131,10 +134,10 @@ export async function sendFundingPsbt(
   const psbt = btoa(String.fromCharCode(...tx.toPSBT()))
 
   const payload = JSON.stringify({ type: 'psbt_offer', funding_psbt: psbt, maker_wallet_pubkey: makerWalletPubkey })
-  const ciphertext = await window.nostr.nip44.encrypt(taker.taker_pubkey, payload)
+  const ciphertext = await nostr.nip44!.encrypt(taker.taker_pubkey, payload)
   const now = Date.now()
 
-  const signed = await window.nostr.signEvent({
+  const signed = await nostr.signEvent({
     kind: KIND_DM,
     pubkey: makerPubkey,
     created_at: Math.floor(now / 1000),

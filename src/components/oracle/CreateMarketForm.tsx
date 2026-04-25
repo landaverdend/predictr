@@ -3,6 +3,7 @@ import { useRelayContext } from '../../context/RelayContext'
 import { useLang } from '../../context/LangContext'
 import { db } from '../../db'
 import { KIND_MARKET_ANNOUNCEMENT } from '../../lib/kinds'
+import { getNostr } from '../../lib/signer'
 
 function randomHex(bytes: number): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
@@ -36,13 +37,14 @@ export function CreateMarketForm() {
   const [error, setError] = useState('')
 
   async function handleImageUpload(file: File) {
-    if (!window.nostr) { setImageError('no nostr extension'); return }
+    const nostr = getNostr()
+    if (!nostr) { setImageError('no nostr signer'); return }
     setImageUploading(true)
     setImageError('')
     try {
       const uploadUrl = 'https://nostr.build/api/v2/nip96/upload'
-      const pubkey = await window.nostr.getPublicKey()
-      const authEvent = await window.nostr.signEvent({
+      const pubkey = await nostr.getPublicKey()
+      const authEvent = await nostr.signEvent({
         kind: 27235,
         pubkey,
         created_at: Math.floor(Date.now() / 1000),
@@ -81,7 +83,8 @@ export function CreateMarketForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!window.nostr) throw new Error('no nostr extension found — install Alby or nos2x')
+    const nostr = getNostr()
+    if (!nostr) throw new Error('no nostr signer found — install Alby, nos2x, or connect a bunker')
 
     setStatus('publishing')
     setError('')
@@ -92,10 +95,10 @@ export function CreateMarketForm() {
       const yesHash = await sha256hex(yesPreimage)
       const noHash = await sha256hex(noPreimage)
       const marketId = randomHex(16)
-      const pubkey = await window.nostr.getPublicKey()
+      const pubkey = await nostr.getPublicKey()
       const now = Date.now()
 
-      const signed = await window.nostr.signEvent({
+      const signed = await nostr.signEvent({
         kind: KIND_MARKET_ANNOUNCEMENT,
         pubkey,
         created_at: Math.floor(now / 1000),

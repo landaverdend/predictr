@@ -6,6 +6,7 @@ import { useRelayContext } from '../../context/RelayContext'
 import { useLang } from '../../context/LangContext'
 import { db } from '../../db'
 import { toast } from 'sonner'
+import { getNostr } from '../../lib/signer'
 
 export function PlaceBetForm({ market, initialSide = 'YES', onDone }: { market: Market; initialSide?: 'YES' | 'NO'; onDone: () => void }) {
   const { publish } = useRelayContext()
@@ -22,14 +23,15 @@ export function PlaceBetForm({ market, initialSide = 'YES', onDone }: { market: 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!window.nostr) {
-      toast.error('no nostr extension found')
+    const nostr = getNostr()
+    if (!nostr) {
+      toast.error('no nostr signer found')
       onDone();
       return
     }
 
     try {
-      const pubkey = await window.nostr.getPublicKey()
+      const pubkey = await nostr.getPublicKey()
       const offerId = randomHex(16)
 
       const unsigned = {
@@ -49,7 +51,7 @@ export function PlaceBetForm({ market, initialSide = 'YES', onDone }: { market: 
         content: '',
       }
 
-      const signed = await window.nostr.signEvent(unsigned)
+      const signed = await nostr.signEvent(unsigned)
       await publish(signed)
 
       await db.contracts.put({

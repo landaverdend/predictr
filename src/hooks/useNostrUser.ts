@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useProfiles, type NostrProfile } from './useProfiles'
+import { getNostr } from '../lib/signer'
 
 type NostrUser = {
   pubkey: string
@@ -10,8 +11,9 @@ export function useNostrUser(): NostrUser | null {
   const [pubkey, setPubkey] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!window.nostr) return
-    window.nostr.getPublicKey().then(pk => setPubkey(pk)).catch(() => {})
+    const nostr = getNostr()
+    if (!nostr) return
+    nostr.getPublicKey().then(pk => setPubkey(pk)).catch(() => {})
   }, [])
 
   const profiles = useProfiles(pubkey ? [pubkey] : [])

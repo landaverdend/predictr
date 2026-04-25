@@ -4,6 +4,13 @@ import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext, DEFAULT_ELECTRUM_URL } from '../context/ElectrumContext'
 import { DEFAULT_RELAY } from '../lib/config'
 import { db } from '../db'
+import {
+  getNostr,
+  getSignerMode,
+  getStoredBunker,
+  connectBunker,
+  disconnectBunker,
+} from '../lib/signer'
 
 type PingStatus = 'checking' | 'ok' | 'fail'
 
@@ -52,13 +59,14 @@ function RelayManager() {
   }
 
   async function handleImportFromExtension() {
-    if (!window.nostr?.getRelays) {
+    const nostr = getNostr()
+    if (!nostr?.getRelays) {
       setImportMsg('extension does not support getRelays')
       setTimeout(() => setImportMsg(''), 3000)
       return
     }
     try {
-      const map = await window.nostr.getRelays()
+      const map = await nostr.getRelays!()
       const urls = Object.keys(map).filter(url => { try { return Boolean(new URL(url).hostname) } catch { return false } })
       if (urls.length) {
         setDraft(prev => {
@@ -209,6 +217,80 @@ function RelayManager() {
   )
 }
 
+function BunkerManager() {
+  const stored = getStoredBunker()
+  const mode = getSignerMode()
+  const [uri, setUri] = useState('')
+  const [status, setStatus] = useState<'idle' | 'connecting' | 'error'>('idle')
+  const [error, setError] = useState('')
+  const [, forceUpdate] = useState(0)
+
+  async function handleConnect() {
+    if (!uri.trim()) return
+    setStatus('connecting')
+    setError('')
+    try {
+      await connectBunker(uri.trim())
+      setUri('')
+      setStatus('idle')
+      forceUpdate(n => n + 1)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'connection failed')
+      setStatus('idle')
+    }
+  }
+
+  function handleDisconnect() {
+    disconnectBunker()
+    forceUpdate(n => n + 1)
+  }
+
+  return (
+    <div className="p-5 space-y-4">
+      {mode === 'bunker' && stored ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-positive shrink-0" />
+            <p className="text-sm text-ink/70">connected to bunker</p>
+          </div>
+          <p className="text-[11px] font-mono text-ink/30 break-all">{stored.bp.pubkey}</p>
+          <p className="text-[11px] text-ink/30">{stored.bp.relays.join(', ')}</p>
+          <button
+            onClick={handleDisconnect}
+            className="text-xs text-negative border border-negative/30 rounded-lg px-4 py-2 hover:bg-negative/5 transition-colors"
+          >
+            disconnect bunker
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <p className="text-sm text-ink/50">
+            Connect a NIP-46 remote signer (Amber, nsecBunker, etc.) as an alternative to a browser extension.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              placeholder="bunker://<pubkey>?relay=wss://..."
+              value={uri}
+              onChange={e => { setUri(e.target.value); setError('') }}
+              onKeyDown={e => e.key === 'Enter' && handleConnect()}
+              className="flex-1 bg-elevated border border-ink/10 rounded-lg px-4 py-2.5 text-sm font-mono placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors"
+            />
+            <button
+              onClick={handleConnect}
+              disabled={!uri.trim() || status === 'connecting'}
+              className="px-4 py-2.5 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-light disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+            >
+              {status === 'connecting' ? 'connecting…' : 'connect'}
+            </button>
+          </div>
+          {error && <p className="text-xs text-negative">{error}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ElectrumManager() {
   const { url, saveUrl, error } = useElectrumContext()
   const [draft, setDraft] = useState(url)
@@ -316,6 +398,14 @@ export default function SettingsPage() {
             <p className="text-sm text-ink/40">no nostr extension found — install Alby or nos2x</p>
           )}
         </div>
+      </section>
+
+      {/* Bunker */}
+      <section className="border border-ink/10 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 bg-elevated border-b border-ink/5">
+          <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">remote signer (NIP-46)</p>
+        </div>
+        <BunkerManager />
       </section>
 
       {/* Relays */}

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useRelayContext } from '../../context/RelayContext'
 import { db, type OracleMarket } from '../../db'
 import { KIND_RESOLUTION } from '../../lib/kinds'
+import { getNostr } from '../../lib/signer'
 
 export function MarketRow({ market }: { market: OracleMarket }) {
   const { publish } = useRelayContext()
@@ -10,15 +11,16 @@ export function MarketRow({ market }: { market: OracleMarket }) {
   const [error, setError] = useState('')
 
   async function handleResolve(outcome: 'YES' | 'NO') {
-    if (!window.nostr) throw new Error('no nostr extension found')
+    const nostr = getNostr()
+    if (!nostr) throw new Error('no nostr signer found')
     setPending(outcome)
     setError('')
 
     try {
       const preimage = outcome === 'YES' ? market.yesPreimage : market.noPreimage
-      const pubkey = await window.nostr.getPublicKey()
+      const pubkey = await nostr.getPublicKey()
 
-      const signed = await window.nostr.signEvent({
+      const signed = await nostr.signEvent({
         kind: KIND_RESOLUTION,
         pubkey,
         created_at: Math.floor(Date.now() / 1000),

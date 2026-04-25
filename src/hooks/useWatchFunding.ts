@@ -6,6 +6,7 @@ import { useElectrum } from './useElectrum'
 import { KIND_OFFER } from '../lib/kinds'
 import { useRelayContext } from '../context/RelayContext'
 import { toast } from 'sonner'
+import { getNostr } from '../lib/signer'
 
 export function useWatchFunding(contracts: Contract[]) {
   const { client } = useElectrum()
@@ -43,9 +44,10 @@ export function useWatchFunding(contracts: Contract[]) {
         })
         toast.success(`Contract funded: ${contract.marketQuestion}`)
 
-        if (contract.id && window.nostr) {
-          const pubkey = await window.nostr.getPublicKey()
-          const signed = await window.nostr.signEvent({
+        const nostr = getNostr()
+        if (contract.id && nostr) {
+          const pubkey = await nostr.getPublicKey()
+          const signed = await nostr.signEvent({
             kind: KIND_OFFER,
             pubkey,
             created_at: Math.floor(Date.now() / 1000),
