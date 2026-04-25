@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type Contract } from '../../db'
+import { type Contract, db } from '../../db'
 import { Field } from './Field'
 import { useRelayContext } from '../../context/RelayContext'
 import { useElectrumContext } from '../../context/ElectrumContext'
@@ -179,7 +179,7 @@ function FundStep({ contract, onCancel, onConfirm }: {
 
 type Step = 'review' | 'fund'
 
-export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contract; taker: TakeRequest; onClose: () => void }) {
+export function AcceptTakerModal({ contract, taker, messageId, onClose }: { contract: Contract; taker: TakeRequest; messageId: string; onClose: () => void }) {
   const [step, setStep] = useState<Step>('review')
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -193,7 +193,10 @@ export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contr
     setSending(true)
     setError('')
     try {
-      await sendFundingPsbt(publish, contract, taker, { funding, changeAddress }, client ?? undefined)
+      const dealId = await sendFundingPsbt(publish, contract, taker, { funding, changeAddress }, client ?? undefined)
+      // Move the take_request message to the deal contract so the standing offer
+      // no longer shows it, but the event ID stays in the DB to prevent re-notification on refresh.
+      await db.messages.update(messageId, { contractId: dealId })
       onClose()
     } catch (e) {
       if (e instanceof Error && e.message.includes('wallet locked')) {

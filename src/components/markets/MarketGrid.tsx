@@ -34,7 +34,7 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
 }) {
   const navigate = useNavigate()
   const { t } = useLang()
-  const stats = computeStats(offers)
+  const stats = computeStats(offers, [])
   const isPastDeadline = blockHeight !== null && blockHeight >= market.resolutionBlockheight
   const isResolved = !!resolution
   const isClosed = isResolved || isPastDeadline

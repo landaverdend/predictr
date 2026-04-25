@@ -44,6 +44,13 @@ const en = {
   'detail.conf': 'conf',
   'detail.resolved_prefix': 'resolved:',
   'detail.preimage': 'preimage:',
+  'detail.standing': 'standing',
+  'detail.filled_tab': 'filled',
+  'detail.tab_standing': 'standing',
+  'detail.tab_taken': 'taken',
+  'detail.tab_funded': 'funded',
+  'detail.tab_settled': 'settled',
+  'detail.not_resolved': 'market not yet resolved',
 
   // ── place bet modal ───────────────────────────────────────────────────────────
   'bet.title': 'place bet',
@@ -83,12 +90,16 @@ const en = {
   // ── contracts page ────────────────────────────────────────────────────────────
   'contracts.title': 'contracts',
   'contracts.tab_made': 'my offers',
-  'contracts.tab_taken': 'taken offers',
+  'contracts.tab_standing': 'standing',
+  'contracts.tab_taken': 'taken',
+  'contracts.tab_funded': 'funded',
   'contracts.tab_settled': 'settled',
   'contracts.empty': 'nothing here yet',
   'contracts.sats_pot': 'sats pot',
   'contracts.role_maker': 'maker',
   'contracts.role_taker': 'taker',
+  'contracts.claimed': 'claimed',
+  'contracts.unclaimed': 'unclaimed',
 
   // ── contract status labels ────────────────────────────────────────────────────
   'status.open': 'open',
@@ -102,6 +113,7 @@ const en = {
   'status.cancelled': 'cancelled',
   'status.won': 'won',
   'status.lost': 'lost',
+  'status.closed': 'closed',
 
   // ── contract detail ───────────────────────────────────────────────────────────
   'contract.back': '← all contracts',
@@ -136,6 +148,8 @@ const en = {
   'contract.spendable_after': 'spendable after block',
   'contract.claim_refund': 'claim refund',
   'contract.refunding': 'broadcasting…',
+  'contract.close_offer': 'close offer',
+  'contract.closing': 'closing…',
 
   // ── disclaimers ───────────────────────────────────────────────────────────────
   'disclaimer.experimental': 'This app is experimental and under active development. Expect bugs, broken flows, and unfinished features. Don\'t stake more than you\'re comfortable losing.',
@@ -227,6 +241,13 @@ const es: Record<keyof typeof en, string> = {
   'detail.conf': 'conf',
   'detail.resolved_prefix': 'resuelto:',
   'detail.preimage': 'preimagen:',
+  'detail.standing': 'en curso',
+  'detail.filled_tab': 'completadas',
+  'detail.tab_standing': 'en curso',
+  'detail.tab_taken': 'tomadas',
+  'detail.tab_funded': 'fondeadas',
+  'detail.tab_settled': 'liquidadas',
+  'detail.not_resolved': 'mercado no resuelto aún',
 
   // ── place bet modal ───────────────────────────────────────────────────────────
   'bet.title': 'apostar',
@@ -266,12 +287,16 @@ const es: Record<keyof typeof en, string> = {
   // ── contracts page ────────────────────────────────────────────────────────────
   'contracts.title': 'contratos',
   'contracts.tab_made': 'mis ofertas',
-  'contracts.tab_taken': 'ofertas tomadas',
-  'contracts.tab_settled': 'resueltos',
+  'contracts.tab_standing': 'en curso',
+  'contracts.tab_taken': 'tomadas',
+  'contracts.tab_funded': 'fondeadas',
+  'contracts.tab_settled': 'resueltas',
   'contracts.empty': 'nada aquí todavía',
   'contracts.sats_pot': 'sats en juego',
   'contracts.role_maker': 'creador',
   'contracts.role_taker': 'tomador',
+  'contracts.claimed': 'reclamado',
+  'contracts.unclaimed': 'sin reclamar',
 
   // ── contract status labels ────────────────────────────────────────────────────
   'status.open': 'abierta',
@@ -285,6 +310,7 @@ const es: Record<keyof typeof en, string> = {
   'status.cancelled': 'cancelado',
   'status.won': 'ganaste',
   'status.lost': 'perdiste',
+  'status.closed': 'cerrado',
 
   // ── contract detail ───────────────────────────────────────────────────────────
   'contract.back': '← todos los contratos',
@@ -319,6 +345,8 @@ const es: Record<keyof typeof en, string> = {
   'contract.spendable_after': 'disponible después del bloque',
   'contract.claim_refund': 'reclamar reembolso',
   'contract.refunding': 'transmitiendo…',
+  'contract.close_offer': 'cerrar oferta',
+  'contract.closing': 'cerrando…',
 
   // ── disclaimers ───────────────────────────────────────────────────────────────
   'disclaimer.experimental': 'Esta app es experimental y está en desarrollo activo. Espera errores y funciones incompletas. No apuestes más de lo que estás dispuesto a perder.',

@@ -3,11 +3,11 @@ import { useParams, useNavigate } from 'react-router-dom'
 import type { NostrEvent } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext } from '../context/ElectrumContext'
-import { parseMarket, parseOffer, tag } from '../lib/market'
-import type { Market, Offer } from '../lib/market'
+import { parseMarket, parseOffer, parseFill, tag } from '../lib/market'
+import type { Market, Offer, Fill } from '../lib/market'
 import type { Resolution } from './MarketsPage'
 import { MarketDetail } from '../components/markets/MarketDetail'
-import { KIND_MARKET_ANNOUNCEMENT, KIND_OFFER, KIND_RESOLUTION } from '../lib/kinds'
+import { KIND_MARKET_ANNOUNCEMENT, KIND_OFFER, KIND_RESOLUTION, KIND_FILL } from '../lib/kinds'
 
 export default function MarketPage() {
   const { marketId } = useParams<{ marketId: string }>()
@@ -17,6 +17,7 @@ export default function MarketPage() {
 
   const [market, setMarket] = useState<Market | null>(null)
   const [offers, setOffers] = useState<Offer[]>([])
+  const [fills, setFills] = useState<Fill[]>([])
   const [resolution, setResolution] = useState<Resolution | undefined>()
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export default function MarketPage() {
         { kinds: [KIND_MARKET_ANNOUNCEMENT], '#d': [marketId] },
         { kinds: [KIND_OFFER] },
         { kinds: [KIND_RESOLUTION], '#d': [marketId] },
+        { kinds: [KIND_FILL], '#m': [marketId] },
       ],
       (event: NostrEvent) => {
         if (event.kind === KIND_MARKET_ANNOUNCEMENT) {
@@ -45,6 +47,12 @@ export default function MarketPage() {
           const outcome = tag(event, 'outcome') as 'YES' | 'NO'
           const preimage = tag(event, 'preimage')
           if (outcome) setResolution({ outcome, preimage })
+        } else if (event.kind === KIND_FILL) {
+          const fill = parseFill(event)
+          setFills(prev => {
+            if (prev.some(f => f.txid === fill.txid)) return prev
+            return [...prev, fill]
+          })
         }
       },
     )
@@ -124,6 +132,7 @@ export default function MarketPage() {
       <MarketDetail
         market={market}
         offers={offers}
+        fills={fills}
         resolution={resolution}
         blockHeight={blockHeight}
         onBack={() => navigate(-1)}

@@ -3,8 +3,10 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Contract } from '../db';
 import { ContractDetail } from '../components/inbox/ContractDetail';
 import { useLang } from '../context/LangContext';
-
-// Status labels are now supplied via useLang() — see contractLabel()
+import { useRelayContext } from '../context/RelayContext';
+import { getNostr } from '../lib/signer';
+import { KIND_OFFER } from '../lib/kinds';
+import type { NostrEvent } from 'nostr-tools';
 
 const STATUS_COLOR: Record<string, string> = {
   offer_pending: 'text-ink/40 bg-ink/5',
@@ -16,6 +18,7 @@ const STATUS_COLOR: Record<string, string> = {
   resolved: 'text-positive bg-positive/10',
   refunded: 'text-ink/50 bg-ink/5',
   cancelled: 'text-ink/30 bg-ink/5',
+  closed: 'text-ink/30 bg-ink/5',
 };
 
 function timeAgo(ts: number) {
@@ -48,6 +51,7 @@ function useContractLabel(contract: Contract) {
     funded: 'status.funded',
     refunded: 'status.refunded',
     cancelled: 'status.cancelled',
+    closed: 'status.closed',
   } as Record<string, string>)[contract.status]
   return {
     label: statusKey ? t(statusKey as Parameters<typeof t>[0]) : contract.status,
@@ -55,7 +59,17 @@ function useContractLabel(contract: Contract) {
   };
 }
 
-function ContractRow({ contract, onClick }: { contract: Contract; onClick: () => void }) {
+function ContractRow({
+  contract,
+  onClose,
+  closing,
+  onClick,
+}: {
+  contract: Contract
+  onClose?: () => void
+  closing?: boolean
+  onClick: () => void
+}) {
   const totalPot = contract.makerStake + contract.takerStake;
   const side = contract.role === 'maker' ? contract.side : contract.side === 'YES' ? 'NO' : 'YES';
   const { t } = useLang();
@@ -64,13 +78,30 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left border rounded-lg px-4 py-3.5 transition-colors ${contract.unread ? 'border-brand/30 bg-brand/5 hover:border-brand/50' : 'border-ink/10 hover:border-ink/25'}`}>
+      className={`w-full text-left border rounded-lg px-4 py-3.5 transition-colors ${contract.unread ? 'border-brand/30 bg-brand/5 hover:border-brand/50' : 'border-ink/10 hover:border-ink/25'}`}
+    >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           {contract.unread && <span className="w-1.5 h-1.5 rounded-full bg-brand shrink-0" />}
           <p className="text-sm font-medium leading-snug line-clamp-1">{contract.marketQuestion}</p>
         </div>
-        <span className={`text-xs px-2 py-0.5 rounded shrink-0 ${color}`}>{label}</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`text-xs px-2 py-0.5 rounded ${color}`}>{label}</span>
+          {contract.status === 'resolved' && (
+            contract.claimTxid
+              ? <span className="text-xs px-2 py-0.5 rounded bg-positive/10 text-positive/70">{t('contracts.claimed')}</span>
+              : <span className="text-xs px-2 py-0.5 rounded bg-caution/10 text-caution">{t('contracts.unclaimed')}</span>
+          )}
+          {onClose && (
+            <button
+              onClick={e => { e.stopPropagation(); onClose() }}
+              disabled={closing}
+              className="text-xs text-ink/30 hover:text-negative border border-ink/10 rounded px-2 py-0.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {closing ? t('contract.closing') : t('contract.close_offer')}
+            </button>
+          )}
+        </div>
       </div>
       <div className="flex items-center justify-between mt-2 text-xs text-ink/30">
         <div className="flex items-center gap-3">
@@ -84,39 +115,76 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
   );
 }
 
-type Tab = 'made' | 'taken' | 'settled'
+type Tab = 'standing' | 'taken' | 'funded' | 'settled'
 
-const SETTLED = ['resolved', 'refunded', 'cancelled']
+const STANDING  = ['offer_pending']
+const TAKEN     = ['take_received', 'awaiting_psbt', 'psbt_sent', 'psbt_received']
+const FUNDED    = ['funded']
+const SETTLED   = ['resolved', 'refunded', 'cancelled', 'closed']
 
 export default function InboxPage() {
   const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? []
-  const [tab, setTab] = useState<Tab>('made')
+  const [tab, setTab] = useState<Tab>('standing')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [closingId, setClosingId] = useState<string | null>(null)
   const { t } = useLang()
+  const { publish } = useRelayContext()
 
   const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null
 
   const unread = {
-    made: contracts.filter(c => c.role === 'maker' && !SETTLED.includes(c.status) && c.unread).length,
-    taken: contracts.filter(c => c.role === 'taker' && !SETTLED.includes(c.status) && c.unread).length,
-    settled: contracts.filter(c => SETTLED.includes(c.status) && c.unread).length,
+    standing: contracts.filter(c => STANDING.includes(c.status) && c.unread).length,
+    taken:    contracts.filter(c => TAKEN.includes(c.status) && c.unread).length,
+    funded:   contracts.filter(c => FUNDED.includes(c.status) && c.unread).length,
+    settled:  contracts.filter(c => SETTLED.includes(c.status) && c.unread).length,
   }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'made', label: t('contracts.tab_made') },
-    { key: 'taken', label: t('contracts.tab_taken') },
-    { key: 'settled', label: t('contracts.tab_settled') },
+    { key: 'standing', label: t('contracts.tab_standing') },
+    { key: 'taken',    label: t('contracts.tab_taken') },
+    { key: 'funded',   label: t('contracts.tab_funded') },
+    { key: 'settled',  label: t('contracts.tab_settled') },
   ]
 
   const visible = contracts.filter(c => {
-    if (tab === 'made') return c.role === 'maker' && !SETTLED.includes(c.status)
-    if (tab === 'taken') return c.role === 'taker' && !SETTLED.includes(c.status)
+    if (tab === 'standing') return STANDING.includes(c.status)
+    if (tab === 'taken')    return TAKEN.includes(c.status)
+    if (tab === 'funded')   return FUNDED.includes(c.status)
     return SETTLED.includes(c.status)
   })
 
   async function openContract(id: string) {
     await db.contracts.update(id, { unread: false })
     setSelectedId(id)
+  }
+
+  async function handleCloseOffer(contract: Contract) {
+    const nostr = getNostr()
+    if (!nostr) return
+    setClosingId(contract.id)
+    try {
+      const pubkey = await nostr.getPublicKey()
+      const signed = await nostr.signEvent({
+        kind: KIND_OFFER,
+        pubkey,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ['d', contract.offerId ?? contract.id],
+          ['e', contract.announcementEventId],
+          ['m', contract.marketId],
+          ['oracle', contract.oraclePubkey],
+          ['side', contract.side],
+          ['maker_stake', String(contract.makerStake)],
+          ['confidence', String(contract.confidence)],
+          ['status', 'closed'],
+        ],
+        content: '',
+      } as NostrEvent)
+      await publish(signed)
+      await db.contracts.update(contract.offerId ?? contract.id, { status: 'closed', updatedAt: Date.now() })
+    } finally {
+      setClosingId(null)
+    }
   }
 
   if (selected) {
@@ -134,18 +202,18 @@ export default function InboxPage() {
       </div>
 
       <div className="flex gap-1 mb-6 border-b border-ink/10">
-        {tabs.map(t => (
+        {tabs.map(tb => (
           <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+            key={tb.key}
+            onClick={() => setTab(tb.key)}
             className={`px-4 py-2 text-sm transition-colors border-b-2 -mb-px ${
-              tab === t.key ? 'border-brand text-ink' : 'border-transparent text-ink/40 hover:text-ink/70'
+              tab === tb.key ? 'border-brand text-ink' : 'border-transparent text-ink/40 hover:text-ink/70'
             }`}
           >
-            {t.label}
-            {unread[t.key] > 0 && (
+            {tb.label}
+            {unread[tb.key] > 0 && (
               <span className="ml-1.5 text-xs bg-brand text-white rounded-full px-1.5 py-0.5 leading-none">
-                {unread[t.key]}
+                {unread[tb.key]}
               </span>
             )}
           </button>
@@ -157,7 +225,15 @@ export default function InboxPage() {
       ) : (
         <div className="space-y-2">
           {visible.map(contract => (
-            <ContractRow key={contract.id} contract={contract} onClick={() => openContract(contract.id)} />
+            <ContractRow
+              key={contract.id}
+              contract={contract}
+              onClick={() => openContract(contract.id)}
+              onClose={tab === 'standing' && contract.role === 'maker' && contract.status === 'offer_pending'
+                ? () => handleCloseOffer(contract)
+                : undefined}
+              closing={closingId === contract.id}
+            />
           ))}
         </div>
       )}

@@ -60,7 +60,7 @@ function OfferRow({ offer }: { offer: Offer }) {
 }
 
 function MarketRow({ market, offers, blockHeight, onClick }: { market: Market; offers: Offer[]; blockHeight: number | null; onClick: () => void }) {
-  const stats = computeStats(offers)
+  const stats = computeStats(offers, [])
   const total = stats.yesVolume + stats.noVolume
   const yesPct = total > 0 ? Math.round(stats.yesVolume / total * 100) : null
 

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import type { Market, Offer } from '../../lib/market'
+import type { Market, Offer, Fill } from '../../lib/market'
 import type { Resolution } from '../../pages/MarketsPage'
 import { takerStake, truncate, timeAgo, computeStats } from '../../lib/market'
 import { BlocktimeLabel } from '../BlocktimeLabel'
@@ -51,10 +51,12 @@ function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProf
   const displayName = profile?.name ?? truncate(offer.makerPubkey)
 
   return (
-    <div className="border border-ink/10 rounded-lg px-4 py-3.5 flex items-center gap-4">
-      {/* Maker identity */}
+    <div
+      onClick={() => navigate(`/offer/${offer.makerPubkey}/${offer.id}`)}
+      className="border border-ink/10 rounded-lg px-4 py-3.5 flex items-center gap-4 cursor-pointer hover:border-ink/25 hover:bg-ink/[0.02] transition-colors"
+    >
       <button
-        onClick={() => navigate(`/user/${offer.makerPubkey}`)}
+        onClick={e => { e.stopPropagation(); navigate(`/user/${offer.makerPubkey}`) }}
         className="flex items-center gap-2.5 shrink-0 hover:opacity-75 transition-opacity"
       >
         <Avatar pubkey={offer.makerPubkey} size="md" />
@@ -64,7 +66,6 @@ function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProf
         </div>
       </button>
 
-      {/* Bet details */}
       <div className="flex items-center gap-3 flex-1 min-w-0">
         <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${offer.side === 'YES' ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative'}`}>
           {offer.side}
@@ -77,15 +78,14 @@ function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProf
         </div>
       </div>
 
-      {/* Time + action */}
       <div className="flex items-center gap-3 shrink-0 text-xs text-ink/30">
         <span className="hidden sm:block">{timeAgo(offer.createdAt)}</span>
         <CopyShareButton offer={offer} />
-        {offer.status === 'filled' ? (
-          <span className="text-ink/20 px-3 py-1.5">{t('detail.offer_filled')}</span>
+        {offer.status === 'closed' ? (
+          <span className="text-ink/20 px-3 py-1.5">{t('status.closed')}</span>
         ) : (
           <button
-            onClick={onTake}
+            onClick={e => { e.stopPropagation(); onTake() }}
             className="border border-ink/20 rounded px-3 py-1.5 hover:bg-ink/5 transition-colors text-ink/60"
           >
             {t('detail.offer_take')}
@@ -96,11 +96,55 @@ function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProf
   )
 }
 
-type StatusFilter = 'all' | 'open' | 'filled'
+function FillRow({ fill }: { fill: Fill }) {
+  const navigate = useNavigate()
+  return (
+    <div className="border border-ink/10 rounded-lg px-4 py-3.5 flex items-center gap-4">
+      <button
+        onClick={() => navigate(`/user/${fill.takerPubkey}`)}
+        className="flex items-center gap-2.5 shrink-0 hover:opacity-75 transition-opacity"
+      >
+        <Avatar pubkey={fill.takerPubkey} size="md" />
+        <div className="text-left hidden sm:block">
+          <p className="text-[10px] font-mono text-ink/30 mt-0.5">{truncate(fill.takerPubkey)}</p>
+        </div>
+      </button>
 
-export function MarketDetail({ market, offers, resolution, blockHeight, onBack }: {
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${fill.makerSide === 'YES' ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative'}`}>
+          {fill.makerSide}
+        </span>
+        <div className="min-w-0">
+          <p className="text-sm font-mono font-medium">{(fill.makerStake + fill.takerStake).toLocaleString()} sats</p>
+          <p className="text-[11px] text-ink/30 mt-0.5 truncate">
+            maker {fill.makerStake.toLocaleString()} · taker {fill.takerStake.toLocaleString()}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-3 shrink-0 text-xs text-ink/30">
+        <span className="hidden sm:block">{timeAgo(fill.createdAt)}</span>
+        <a
+          href={`https://mempool.space/tx/${fill.txid}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[10px] text-ink/40 hover:text-ink/70 transition-colors"
+          title={fill.txid}
+        >
+          {fill.txid.slice(0, 8)}…
+        </a>
+      </div>
+    </div>
+  )
+}
+
+type OfferTab = 'standing' | 'filled'
+type StandingStatusFilter = 'open' | 'closed' | 'all'
+
+export function MarketDetail({ market, offers, fills, resolution, blockHeight, onBack }: {
   market: Market
   offers: Offer[]
+  fills: Fill[]
   resolution: Resolution | undefined
   blockHeight: number | null
   onBack: () => void
@@ -117,16 +161,16 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
   )
   const profiles = useProfiles(makerPubkeys)
 
-  // filters
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
+  const [offerTab, setOfferTab] = useState<OfferTab>('standing')
+  const [standingStatus, setStandingStatus] = useState<StandingStatusFilter>('open')
   const [minSats, setMinSats] = useState('')
   const [maxSats, setMaxSats] = useState('')
   const [minConf, setMinConf] = useState('')
   const [maxConf, setMaxConf] = useState('')
 
   const filteredOffers = offers.filter(o => {
-    if (statusFilter === 'open' && o.status !== 'open') return false
-    if (statusFilter === 'filled' && o.status === 'open') return false
+    if (standingStatus === 'open' && o.status !== 'open') return false
+    if (standingStatus === 'closed' && o.status !== 'closed') return false
     if (minSats && o.makerStake < parseInt(minSats)) return false
     if (maxSats && o.makerStake > parseInt(maxSats)) return false
     if (minConf && o.confidence < parseInt(minConf)) return false
@@ -134,7 +178,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
     return true
   })
 
-  const stats = computeStats(offers)
+  const stats = computeStats(offers, fills)
   const hasVolume = stats.yesVolume > 0 || stats.noVolume > 0
   const isPastDeadline = blockHeight !== null && blockHeight >= market.resolutionBlockheight
   const isClosed = !!resolution || isPastDeadline
@@ -173,13 +217,9 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
             )}
           </div>
 
-          {/* YES / NO sentiment bar — always visible */}
           <div className="space-y-2">
             <div className="flex h-2.5 rounded-full overflow-hidden bg-ink/5">
-              <div
-                className="bg-positive/70 transition-all duration-700"
-                style={{ width: `${yesPct}%` }}
-              />
+              <div className="bg-positive/70 transition-all duration-700" style={{ width: `${yesPct}%` }} />
               <div className="bg-negative/50 flex-1" />
             </div>
             <div className="flex justify-between text-xs font-mono">
@@ -189,7 +229,6 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
             </div>
           </div>
 
-          {/* Stats */}
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
               <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('detail.open_offers')}</p>
@@ -208,7 +247,6 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
             </div>
           </div>
 
-          {/* Oracle + resolution */}
           <div className="flex items-center gap-4 pt-3 border-t border-ink/8">
             <button onClick={() => navigate(`/user/${market.pubkey}`)} className="flex items-center gap-3 hover:opacity-75 transition-opacity">
               <Avatar pubkey={market.pubkey} size="md" />
@@ -242,104 +280,103 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
       )}
 
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-ink/70 uppercase tracking-wider">{t('detail.offers')}</h3>
+        <div className="flex rounded-lg border border-ink/10 overflow-hidden text-xs w-fit">
+          <button
+            onClick={() => setOfferTab('standing')}
+            className={`px-4 py-2 transition-colors ${offerTab === 'standing' ? 'bg-ink/10 text-ink/80' : 'text-ink/30 hover:text-ink/60'}`}
+          >
+            {t('detail.standing')}
+          </button>
+          <button
+            onClick={() => setOfferTab('filled')}
+            className={`px-4 py-2 transition-colors ${offerTab === 'filled' ? 'bg-ink/10 text-ink/80' : 'text-ink/30 hover:text-ink/60'}`}
+          >
+            {t('detail.filled_tab')}
+          </button>
+        </div>
 
-        {/* Filters */}
-        {offers.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Status toggle */}
-            <div className="flex rounded-lg border border-ink/10 overflow-hidden text-xs">
-              {(['all', 'open', 'filled'] as StatusFilter[]).map(s => (
-                <button
-                  key={s}
-                  onClick={() => setStatusFilter(s)}
-                  className={`px-3 py-1.5 transition-colors ${statusFilter === s ? 'bg-ink/10 text-ink/80' : 'text-ink/30 hover:text-ink/60'}`}
-                >
-                  {t(s === 'all' ? 'detail.filter_all' : s === 'open' ? 'detail.filter_open' : 'detail.filter_filled')}
-                </button>
-              ))}
-            </div>
+        {offerTab === 'standing' && (
+          <>
+            {offers.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="flex rounded-lg border border-ink/10 overflow-hidden text-xs">
+                  {(['open', 'closed', 'all'] as StandingStatusFilter[]).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setStandingStatus(s)}
+                      className={`px-3 py-1.5 transition-colors ${standingStatus === s ? 'bg-ink/10 text-ink/80' : 'text-ink/30 hover:text-ink/60'}`}
+                    >
+                      {s === 'open' ? t('detail.filter_open') : s === 'closed' ? t('status.closed') : t('detail.filter_all')}
+                    </button>
+                  ))}
+                </div>
 
-            {/* Sats range */}
-            <div className="flex items-center border border-ink/10 rounded-lg overflow-hidden text-xs">
-              <span className="px-3 py-1.5 text-ink/30 border-r border-ink/10 bg-ink/3 select-none">sats</span>
-              <input
-                type="number"
-                placeholder="min"
-                value={minSats}
-                onChange={e => setMinSats(e.target.value)}
-                className="w-16 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <span className="text-ink/20 px-0.5">–</span>
-              <input
-                type="number"
-                placeholder="max"
-                value={maxSats}
-                onChange={e => setMaxSats(e.target.value)}
-                className="w-16 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-            </div>
+                <div className="flex items-center border border-ink/10 rounded-lg overflow-hidden text-xs">
+                  <span className="px-3 py-1.5 text-ink/30 border-r border-ink/10 bg-ink/3 select-none">sats</span>
+                  <input type="number" placeholder="min" value={minSats} onChange={e => setMinSats(e.target.value)}
+                    className="w-16 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                  <span className="text-ink/20 px-0.5">–</span>
+                  <input type="number" placeholder="max" value={maxSats} onChange={e => setMaxSats(e.target.value)}
+                    className="w-16 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                </div>
 
-            {/* Confidence range */}
-            <div className="flex items-center border border-ink/10 rounded-lg overflow-hidden text-xs">
-              <span className="px-3 py-1.5 text-ink/30 border-r border-ink/10 bg-ink/3 select-none">conf</span>
-              <input
-                type="number"
-                min="1" max="99"
-                placeholder="min"
-                value={minConf}
-                onChange={e => setMinConf(e.target.value)}
-                className="w-12 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <span className="text-ink/20 px-0.5">–</span>
-              <input
-                type="number"
-                min="1" max="99"
-                placeholder="max"
-                value={maxConf}
-                onChange={e => setMaxConf(e.target.value)}
-                className="w-12 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <span className="pr-3 text-ink/30">%</span>
-            </div>
+                <div className="flex items-center border border-ink/10 rounded-lg overflow-hidden text-xs">
+                  <span className="px-3 py-1.5 text-ink/30 border-r border-ink/10 bg-ink/3 select-none">conf</span>
+                  <input type="number" min="1" max="99" placeholder="min" value={minConf} onChange={e => setMinConf(e.target.value)}
+                    className="w-12 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                  <span className="text-ink/20 px-0.5">–</span>
+                  <input type="number" min="1" max="99" placeholder="max" value={maxConf} onChange={e => setMaxConf(e.target.value)}
+                    className="w-12 bg-transparent px-2 py-1.5 font-mono text-ink/70 placeholder-ink/20 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                  <span className="pr-3 text-ink/30">%</span>
+                </div>
 
-            {(statusFilter !== 'all' || minSats || maxSats || minConf || maxConf) && (
-              <button
-                onClick={() => { setStatusFilter('all'); setMinSats(''); setMaxSats(''); setMinConf(''); setMaxConf('') }}
-                className="text-xs text-ink/30 hover:text-ink/60 transition-colors"
-              >
-                {t('detail.filter_clear')}
-              </button>
-            )}
-          </div>
-        )}
-
-        {offers.length === 0 ? (
-          <div className="border border-ink/8 rounded-xl p-12 text-center space-y-3">
-            <p className="text-ink/25 text-sm">{t('detail.no_offers')}</p>
-            {!isClosed && (
-              <div className="flex items-center justify-center gap-2">
-                <button
-                  onClick={() => setPlacing('YES')}
-                  className="px-5 py-2 rounded-lg text-sm font-semibold bg-positive/10 text-positive border border-positive/20 hover:bg-positive/20 transition-colors"
-                >YES</button>
-                <button
-                  onClick={() => setPlacing('NO')}
-                  className="px-5 py-2 rounded-lg text-sm font-semibold bg-negative/10 text-negative border border-negative/20 hover:bg-negative/20 transition-colors"
-                >NO</button>
+                {(standingStatus !== 'open' || minSats || maxSats || minConf || maxConf) && (
+                  <button
+                    onClick={() => { setStandingStatus('open'); setMinSats(''); setMaxSats(''); setMinConf(''); setMaxConf('') }}
+                    className="text-xs text-ink/30 hover:text-ink/60 transition-colors"
+                  >
+                    {t('detail.filter_clear')}
+                  </button>
+                )}
               </div>
             )}
-          </div>
-        ) : filteredOffers.length === 0 ? (
-          <div className="border border-ink/8 rounded-xl p-8 text-center text-ink/30 text-sm">
-            {t('detail.no_match')}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredOffers.map(offer => (
-              <OfferRow key={offer.id} offer={offer} profile={profiles.get(offer.makerPubkey)} onTake={() => setTaking(offer)} />
-            ))}
-          </div>
+
+            {offers.length === 0 ? (
+              <div className="border border-ink/8 rounded-xl p-12 text-center space-y-3">
+                <p className="text-ink/25 text-sm">{t('detail.no_offers')}</p>
+                {!isClosed && (
+                  <div className="flex items-center justify-center gap-2">
+                    <button onClick={() => setPlacing('YES')} className="px-5 py-2 rounded-lg text-sm font-semibold bg-positive/10 text-positive border border-positive/20 hover:bg-positive/20 transition-colors">YES</button>
+                    <button onClick={() => setPlacing('NO')} className="px-5 py-2 rounded-lg text-sm font-semibold bg-negative/10 text-negative border border-negative/20 hover:bg-negative/20 transition-colors">NO</button>
+                  </div>
+                )}
+              </div>
+            ) : filteredOffers.length === 0 ? (
+              <div className="border border-ink/8 rounded-xl p-8 text-center text-ink/30 text-sm">
+                {t('detail.no_match')}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredOffers.map(offer => (
+                  <OfferRow key={offer.id} offer={offer} profile={profiles.get(offer.makerPubkey)} onTake={() => setTaking(offer)} />
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {offerTab === 'filled' && (
+          fills.length === 0 ? (
+            <div className="border border-ink/8 rounded-xl p-12 text-center">
+              <p className="text-ink/25 text-sm">{t('detail.no_offers')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {fills.map(fill => (
+                <FillRow key={fill.txid} fill={fill} />
+              ))}
+            </div>
+          )
         )}
       </div>
 

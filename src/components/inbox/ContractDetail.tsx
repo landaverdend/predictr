@@ -14,6 +14,11 @@ import { useProfiles } from '../../hooks/useProfiles'
 import { useLang } from '../../context/LangContext'
 import { useElectrumContext } from '../../context/ElectrumContext'
 import { BlocktimeLabel } from '../BlocktimeLabel'
+import { useRelayContext } from '../../context/RelayContext'
+import { publishFillEvent } from '../../lib/offerFlow'
+import { getNostr } from '../../lib/signer'
+import { KIND_OFFER } from '../../lib/kinds'
+import type { NostrEvent } from 'nostr-tools'
 
 // Status labels are derived from useLang() — see statusLabel computation in ContractDetail
 
@@ -26,6 +31,7 @@ const STATUS_COLOR: Record<string, string> = {
   resolved: 'text-positive bg-positive/10',
   refunded: 'text-ink/50 bg-ink/5',
   cancelled: 'text-ink/30 bg-ink/5',
+  closed: 'text-ink/30 bg-ink/5',
 }
 
 export function ContractDetail({ contract, onBack }: { contract: Contract; onBack: () => void }) {
@@ -33,10 +39,13 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   const profiles = useProfiles(counterpartyPubkeys)
   const counterpartyProfile = contract.counterpartyPubkey ? profiles.get(contract.counterpartyPubkey) : undefined
   const { t } = useLang()
+  const { publish } = useRelayContext()
 
-  const [acceptingTaker, setAcceptingTaker] = useState<TakeRequest | null>(null)
+  const [acceptingTaker, setAcceptingTaker] = useState<{ msgId: string; req: TakeRequest } | null>(null)
   const [showClaim, setShowClaim] = useState(false)
   const [pendingAction, setPendingAction] = useState<(() => Promise<void>) | null>(null)
+  const [closing, setClosing] = useState(false)
+  const [closeError, setCloseError] = useState('')
 
   const takeRequests = useLiveQuery(async () => {
     const msgs = await db.messages
@@ -58,7 +67,8 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
     setSigning(true)
     setSignError('')
     try {
-      await signAndBroadcastFunding(contract, client)
+      const txid = await signAndBroadcastFunding(contract, client)
+      try { await publishFillEvent(publish, contract, txid) } catch { /* non-fatal */ }
     } catch (e) {
       if (e instanceof Error && e.message.includes('wallet locked')) {
         setSigning(false)
@@ -68,6 +78,38 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
       setSignError(e instanceof Error ? e.message : 'failed')
     } finally {
       setSigning(false)
+    }
+  }
+
+  async function handleCloseOffer() {
+    setClosing(true)
+    setCloseError('')
+    try {
+      const nostr = getNostr()
+      if (!nostr) throw new Error('no nostr signer')
+      const pubkey = await nostr.getPublicKey()
+      const signed = await nostr.signEvent({
+        kind: KIND_OFFER,
+        pubkey,
+        created_at: Math.floor(Date.now() / 1000),
+        tags: [
+          ['d', contract.offerId ?? contract.id],
+          ['e', contract.announcementEventId],
+          ['m', contract.marketId],
+          ['oracle', contract.oraclePubkey],
+          ['side', contract.side],
+          ['maker_stake', String(contract.makerStake)],
+          ['confidence', String(contract.confidence)],
+          ['status', 'closed'],
+        ],
+        content: '',
+      } as NostrEvent)
+      await publish(signed)
+      await db.contracts.update(contract.offerId ?? contract.id, { status: 'closed', updatedAt: Date.now() })
+    } catch (e) {
+      setCloseError(e instanceof Error ? e.message : 'failed')
+    } finally {
+      setClosing(false)
     }
   }
 
@@ -116,6 +158,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
     resolved: t('status.resolved'),
     refunded: t('status.refunded'),
     cancelled: t('status.cancelled'),
+    closed: t('status.closed'),
   }
   const statusLabel = contract.status === 'resolved'
     ? (won === true ? t('status.won') : won === false ? t('status.lost') : t('status.resolved'))
@@ -193,9 +236,19 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
         {contract.role === 'maker' && (contract.status === 'offer_pending' || contract.status === 'take_received') && (
           takeRequests.length > 0 ? (
             <div className="space-y-2">
-              <p className="text-xs text-caution font-medium uppercase tracking-wider">
-                {takeRequests.length} {takeRequests.length !== 1 ? t('contract.taker_requests') : t('contract.taker_request')}
-              </p>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-caution font-medium uppercase tracking-wider">
+                  {takeRequests.length} {takeRequests.length !== 1 ? t('contract.taker_requests') : t('contract.taker_request')}
+                </p>
+                <button
+                  onClick={handleCloseOffer}
+                  disabled={closing}
+                  className="text-xs text-ink/40 hover:text-negative border border-ink/10 rounded px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {closing ? t('contract.closing') : t('contract.close_offer')}
+                </button>
+              </div>
+              {closeError && <p className="text-xs text-negative">{closeError}</p>}
               {takeRequests.map(({ id: msgId, req: tr }) => (
                 <div key={msgId} className="border border-caution/20 bg-caution/5 rounded-lg p-4 space-y-3">
                   <div className="flex items-center justify-between gap-3">
@@ -211,7 +264,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
                         {t('contract.refuse')}
                       </button>
                       <button
-                        onClick={() => setAcceptingTaker(tr)}
+                        onClick={() => setAcceptingTaker({ msgId, req: tr })}
                         className="px-2.5 py-1 text-xs font-medium text-white bg-positive rounded-lg hover:bg-positive/80 transition-colors"
                       >
                         {t('contract.accept')}
@@ -226,8 +279,20 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
               ))}
             </div>
           ) : (
-            <div className="border border-ink/10 rounded-lg p-4 text-xs text-ink/30 text-center">
-              {t('contract.waiting_taker')}
+            <div className="space-y-2">
+              <div className="flex items-center justify-end">
+                <button
+                  onClick={handleCloseOffer}
+                  disabled={closing}
+                  className="text-xs text-ink/40 hover:text-negative border border-ink/10 rounded px-2.5 py-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  {closing ? t('contract.closing') : t('contract.close_offer')}
+                </button>
+              </div>
+              {closeError && <p className="text-xs text-negative">{closeError}</p>}
+              <div className="border border-ink/10 rounded-lg p-4 text-xs text-ink/30 text-center">
+                {t('contract.waiting_taker')}
+              </div>
             </div>
           )
         )}
@@ -307,7 +372,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
       </div>
 
       {acceptingTaker && (
-        <AcceptTakerModal contract={contract} taker={acceptingTaker} onClose={() => setAcceptingTaker(null)} />
+        <AcceptTakerModal contract={contract} taker={acceptingTaker.req} messageId={acceptingTaker.msgId} onClose={() => setAcceptingTaker(null)} />
       )}
       {showClaim && (
         <ClaimModal contract={contract} onClose={() => setShowClaim(false)} />

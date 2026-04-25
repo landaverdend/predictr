@@ -1,4 +1,4 @@
-import { KIND_OFFER, KIND_DM } from './kinds'
+import { KIND_OFFER, KIND_DM, KIND_FILL } from './kinds'
 import { getNostr } from './signer'
 import type { NostrEvent } from 'nostr-tools'
 import { SigHash } from '@scure/btc-signer'
@@ -9,7 +9,7 @@ import type { TakeRequest, TakerInput } from './types'
 import { db } from '../db'
 import { hexToBytes } from './utils'
 import { getDecryptedPrivkey } from './pinCrypto'
-import { Market, Offer, takerStake } from './market'
+import { Market, Offer, takerStake, randomHex } from './market'
 import type { ElectrumClient } from './electrumClient'
 import { fundingFeePerParty } from './feeEstimator'
 
@@ -105,7 +105,7 @@ export async function sendFundingPsbt(
   taker: TakeRequest,
   maker: { funding: WalletUTXO; changeAddress: string },
   electrum?: ElectrumClient,
-): Promise<void> {
+): Promise<string> {
   const nostr = getNostr()
   if (!nostr?.nip44) throw new Error('nostr signer with NIP-44 required')
 
@@ -156,25 +156,79 @@ export async function sendFundingPsbt(
   await publish(signed)
 
 
+  // Create a new deal contract for this specific negotiation.
+  // The standing offer (contract.id) stays at offer_pending so the maker
+  // can accept multiple takers against the same offer.
+  const dealId = randomHex(16)
   await Promise.all([
-    db.contracts.update(contract.id, {
+    db.contracts.put({
+      id: dealId,
+      offerId: contract.id,
+      role: 'maker',
       status: 'psbt_sent',
-      fundingPsbt: psbt,
+      side: contract.side,
+      marketId: contract.marketId,
+      marketQuestion: contract.marketQuestion,
+      oraclePubkey: contract.oraclePubkey,
+      announcementEventId: contract.announcementEventId,
+      yesHash: contract.yesHash,
+      noHash: contract.noHash,
+      resolutionBlockheight: contract.resolutionBlockheight,
+      counterpartyPubkey: taker.taker_pubkey,
+      makerStake: contract.makerStake,
+      confidence: contract.confidence,
+      takerStake: contract.takerStake,
       makerWalletKeyId: maker.funding.key.id,
       makerWalletPubkey: makerWalletPubkey,
-      counterpartyPubkey: taker.taker_pubkey,
       takerInput: taker.input,
       takerChangeAddress: taker.change_address,
       takerWalletPubkey: taker.taker_wallet_pubkey,
+      fundingPsbt: psbt,
+      unread: false,
+      createdAt: now,
       updatedAt: now,
     }),
     db.messages.put({
       id: signed.id,
-      contractId: contract.id,
+      contractId: dealId,
       direction: 'out',
       type: 'psbt_offer',
       payload,
       createdAt: now,
     }),
   ])
+  return dealId
+}
+
+/**
+ * Taker publishes a Kind 30053 fill receipt after broadcasting the funding tx.
+ */
+export async function publishFillEvent(
+  publish: (event: NostrEvent) => Promise<void>,
+  contract: Contract,
+  txid: string,
+): Promise<void> {
+  const nostr = getNostr()
+  if (!nostr) return
+  if (!contract.takerWalletPubkey || !contract.makerWalletPubkey) return
+
+  const takerPubkey = await nostr.getPublicKey()
+  const signed = await nostr.signEvent({
+    kind: KIND_FILL,
+    pubkey: takerPubkey,
+    created_at: Math.floor(Date.now() / 1000),
+    tags: [
+      ['d', txid],
+      ['a', `30051:${contract.counterpartyPubkey}:${contract.id}`],
+      ['m', contract.marketId],
+      ['funding_txid', txid],
+      ['side', contract.side],
+      ['maker_wallet_pubkey', contract.makerWalletPubkey],
+      ['taker_wallet_pubkey', contract.takerWalletPubkey],
+      ['maker_stake', String(contract.makerStake)],
+      ['taker_stake', String(contract.takerStake)],
+    ],
+    content: '',
+  } as NostrEvent)
+  await publish(signed)
 }

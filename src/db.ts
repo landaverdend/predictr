@@ -11,6 +11,7 @@ export type ContractStatus =
   | 'resolved'         // both: oracle revealed preimage, claim tx sent
   | 'refunded'         // both: timelock expired, refund claimed
   | 'cancelled'        // maker: offer cancelled before match
+  | 'closed'           // maker: offer manually closed, no longer accepting takers
 
 export type ContractSide = 'YES' | 'NO'
 export type MessageDirection = 'in' | 'out'
@@ -18,6 +19,7 @@ export type MessageType = 'take_request' | 'psbt_offer'
 
 export interface Contract {
   id: string                      // offer event id (maker) or take_request id (taker)
+  offerId?: string                // set on deal contracts — points back to the standing offer
   role: ContractRole
   status: ContractStatus
   side: ContractSide              // maker's side; taker gets the opposite

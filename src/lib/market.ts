@@ -28,7 +28,21 @@ export type Offer = {
   side: 'YES' | 'NO'
   makerStake: number
   confidence: number
-  status: string    // 'open' | 'filled' | etc.
+  status: string    // 'open' | 'closed'
+  createdAt: number
+}
+
+export type Fill = {
+  txid: string
+  offerRef: string          // '30051:maker_pubkey:d_tag'
+  marketId: string
+  makerPubkey: string       // extracted from 'a' tag
+  takerPubkey: string       // event.pubkey
+  makerWalletPubkey: string
+  takerWalletPubkey: string
+  makerSide: 'YES' | 'NO'  // maker's side
+  makerStake: number
+  takerStake: number
   createdAt: number
 }
 
@@ -52,24 +66,17 @@ export function parseMarket(event: NostrEvent): Market {
   }
 }
 
-export function computeStats(offers: Offer[]): MarketStats {
-  let openCount = 0
-  let filledCount = 0
+export function computeStats(offers: Offer[], fills: Fill[]): MarketStats {
+  const openCount = offers.filter(o => o.status === 'open').length
+  const filledCount = fills.length
   let totalVolume = 0
   let yesVolume = 0
   let noVolume = 0
 
-  for (const o of offers) {
-    const ts = takerStake(o)
-    if (o.status === 'open') {
-      openCount++
-    } else {
-      filledCount++
-      totalVolume += o.makerStake + ts
-      // Both sides locked in
-      if (o.side === 'YES') { yesVolume += o.makerStake; noVolume += ts }
-      else { noVolume += o.makerStake; yesVolume += ts }
-    }
+  for (const f of fills) {
+    totalVolume += f.makerStake + f.takerStake
+    if (f.makerSide === 'YES') { yesVolume += f.makerStake; noVolume += f.takerStake }
+    else { noVolume += f.makerStake; yesVolume += f.takerStake }
   }
 
   return { openCount, filledCount, totalVolume, yesVolume, noVolume }
@@ -84,6 +91,24 @@ export function parseOffer(event: NostrEvent): Offer {
     makerStake: parseInt(tag(event, 'maker_stake'), 10),
     confidence: parseInt(tag(event, 'confidence'), 10),
     status: tag(event, 'status') || 'open',
+    createdAt: event.created_at * 1000,
+  }
+}
+
+export function parseFill(event: NostrEvent): Fill {
+  const offerRef = tag(event, 'a')
+  const makerPubkey = offerRef.split(':')[1] ?? ''
+  return {
+    txid: tag(event, 'd'),
+    offerRef,
+    marketId: tag(event, 'm'),
+    makerPubkey,
+    takerPubkey: event.pubkey,
+    makerWalletPubkey: tag(event, 'maker_wallet_pubkey'),
+    takerWalletPubkey: tag(event, 'taker_wallet_pubkey'),
+    makerSide: tag(event, 'side') as 'YES' | 'NO',
+    makerStake: parseInt(tag(event, 'maker_stake'), 10),
+    takerStake: parseInt(tag(event, 'taker_stake'), 10),
     createdAt: event.created_at * 1000,
   }
 }
