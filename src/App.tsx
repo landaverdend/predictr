@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { RelayProvider } from './context/RelayContext'
 import { ElectrumProvider } from './context/ElectrumContext'
+import { LangProvider } from './context/LangContext'
 import { useCheckOffers } from './hooks/useCheckOffers'
 import { useWatchFunding } from './hooks/useWatchFunding'
 import { useWatchResolution } from './hooks/useWatchResolution'
@@ -42,12 +43,14 @@ function AppShell() {
 export default function App() {
   return (
     <BrowserRouter>
-      <RelayProvider>
-        <ElectrumProvider>
-          <AppShell />
-        </ElectrumProvider>
-      </RelayProvider>
-      <Toaster richColors position="top-right" />
+      <LangProvider>
+        <RelayProvider>
+          <ElectrumProvider>
+            <AppShell />
+          </ElectrumProvider>
+        </RelayProvider>
+        <Toaster richColors position="top-right" />
+      </LangProvider>
     </BrowserRouter>
   )
 }

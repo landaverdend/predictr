@@ -4,6 +4,7 @@ import type { Resolution } from '../../pages/MarketsPage'
 import { truncate, computeStats } from '../../lib/market'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { Avatar } from '../Avatar'
+import { useLang } from '../../context/LangContext'
 
 function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
   market: Market
@@ -13,6 +14,7 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
   onSelect: () => void
 }) {
   const navigate = useNavigate()
+  const { t } = useLang()
   const stats = computeStats(offers)
   const isPastDeadline = blockHeight !== null && blockHeight >= market.resolutionBlockheight
   const isResolved = !!resolution
@@ -31,11 +33,11 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
           <p className="text-sm font-medium leading-snug flex-1">{market.question}</p>
           {isResolved && (
             <span className={`shrink-0 text-[10px] font-medium px-2 py-0.5 rounded ${resolution!.outcome === 'YES' ? 'bg-positive/20 text-positive border border-positive/30' : 'bg-negative/20 text-negative border border-negative/30'}`}>
-              resolved {resolution!.outcome}
+              {t('card.resolved')} {resolution!.outcome}
             </span>
           )}
           {!isResolved && isPastDeadline && (
-            <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded bg-ink/40 text-white/70">pending</span>
+            <span className="shrink-0 text-[10px] font-medium px-2 py-0.5 rounded bg-ink/40 text-white/70">{t('card.pending')}</span>
           )}
         </div>
         <button
@@ -52,7 +54,7 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
               {stats.filledCount > 0 && (
                 <span className="font-mono text-ink/40">{stats.totalVolume.toLocaleString()} sats</span>
               )}
-              <span>{stats.openCount} open</span>
+              <span>{stats.openCount} {t('card.open')}</span>
             </div>
           </div>
           {(stats.yesVolume > 0 || stats.noVolume > 0) && (() => {

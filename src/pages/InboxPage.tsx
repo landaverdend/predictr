@@ -2,17 +2,9 @@ import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db, type Contract } from '../db';
 import { ContractDetail } from '../components/inbox/ContractDetail';
+import { useLang } from '../context/LangContext';
 
-const STATUS_LABEL: Record<string, string> = {
-  offer_pending: 'open',
-  take_received: 'action needed',
-  psbt_sent: 'psbt sent',
-  awaiting_psbt: 'pending maker response',
-  funded: 'funded',
-  resolved: 'resolved',
-  refunded: 'refunded',
-  cancelled: 'cancelled',
-};
+// Status labels are now supplied via useLang() — see contractLabel()
 
 const STATUS_COLOR: Record<string, string> = {
   offer_pending: 'text-ink/40 bg-ink/5',
@@ -34,22 +26,31 @@ function timeAgo(ts: number) {
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function contractLabel(contract: Contract): { label: string; color: string } {
+function useContractLabel(contract: Contract) {
+  const { t } = useLang()
   if (contract.status === 'resolved') {
-    if (!contract.outcome) return { label: 'resolved', color: 'text-ink/40 bg-ink/5' };
+    if (!contract.outcome) return { label: t('status.resolved'), color: 'text-ink/40 bg-ink/5' };
     const ourSide = contract.role === 'maker' ? contract.side : contract.side === 'YES' ? 'NO' : 'YES';
     const won = ourSide === contract.outcome;
     return won
-      ? { label: 'won', color: 'text-[#f59e0b] bg-[#f59e0b]/10 font-semibold' }
-      : { label: 'lost', color: 'text-negative bg-negative/10' };
+      ? { label: t('status.won'), color: 'text-[#f59e0b] bg-[#f59e0b]/10 font-semibold' }
+      : { label: t('status.lost'), color: 'text-negative bg-negative/10' };
   }
   if (contract.status === 'psbt_sent') {
     return contract.role === 'taker'
-      ? { label: 'psbt received', color: STATUS_COLOR.psbt_sent }
-      : { label: 'psbt sent', color: STATUS_COLOR.psbt_sent };
+      ? { label: t('status.psbt_received'), color: STATUS_COLOR.psbt_sent }
+      : { label: t('status.psbt_sent'), color: STATUS_COLOR.psbt_sent };
   }
+  const statusKey = ({
+    offer_pending: 'status.open',
+    take_received: 'status.action_needed',
+    awaiting_psbt: 'status.awaiting_psbt',
+    funded: 'status.funded',
+    refunded: 'status.refunded',
+    cancelled: 'status.cancelled',
+  } as Record<string, string>)[contract.status]
   return {
-    label: STATUS_LABEL[contract.status] ?? contract.status,
+    label: statusKey ? t(statusKey as Parameters<typeof t>[0]) : contract.status,
     color: STATUS_COLOR[contract.status] ?? 'text-ink/40 bg-ink/5',
   };
 }
@@ -57,7 +58,8 @@ function contractLabel(contract: Contract): { label: string; color: string } {
 function ContractRow({ contract, onClick }: { contract: Contract; onClick: () => void }) {
   const totalPot = contract.makerStake + contract.takerStake;
   const side = contract.role === 'maker' ? contract.side : contract.side === 'YES' ? 'NO' : 'YES';
-  const { label, color } = contractLabel(contract);
+  const { t } = useLang();
+  const { label, color } = useContractLabel(contract);
 
   return (
     <button
@@ -73,8 +75,8 @@ function ContractRow({ contract, onClick }: { contract: Contract; onClick: () =>
       <div className="flex items-center justify-between mt-2 text-xs text-ink/30">
         <div className="flex items-center gap-3">
           <span className={`font-medium ${side === 'YES' ? 'text-positive/70' : 'text-negative/70'}`}>{side}</span>
-          <span>{contract.role}</span>
-          <span className="font-mono">{totalPot.toLocaleString()} sats pot</span>
+          <span>{contract.role === 'maker' ? t('contracts.role_maker') : t('contracts.role_taker')}</span>
+          <span className="font-mono">{totalPot.toLocaleString()} {t('contracts.sats_pot')}</span>
         </div>
         <span>{timeAgo(contract.updatedAt)}</span>
       </div>
@@ -90,6 +92,7 @@ export default function InboxPage() {
   const contracts = useLiveQuery(() => db.contracts.orderBy('updatedAt').reverse().toArray()) ?? []
   const [tab, setTab] = useState<Tab>('made')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const { t } = useLang()
 
   const selected = selectedId ? (contracts.find(c => c.id === selectedId) ?? null) : null
 
@@ -100,9 +103,9 @@ export default function InboxPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
-    { key: 'made', label: 'my offers' },
-    { key: 'taken', label: 'taken offers' },
-    { key: 'settled', label: 'settled' },
+    { key: 'made', label: t('contracts.tab_made') },
+    { key: 'taken', label: t('contracts.tab_taken') },
+    { key: 'settled', label: t('contracts.tab_settled') },
   ]
 
   const visible = contracts.filter(c => {
@@ -127,7 +130,7 @@ export default function InboxPage() {
   return (
     <main className="flex-1 px-6 py-10 max-w-2xl mx-auto w-full">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-1">contracts</h1>
+        <h1 className="text-2xl font-bold mb-1">{t('contracts.title')}</h1>
       </div>
 
       <div className="flex gap-1 mb-6 border-b border-ink/10">
@@ -150,7 +153,7 @@ export default function InboxPage() {
       </div>
 
       {visible.length === 0 ? (
-        <div className="text-center text-ink/30 text-sm py-20">nothing here yet</div>
+        <div className="text-center text-ink/30 text-sm py-20">{t('contracts.empty')}</div>
       ) : (
         <div className="space-y-2">
           {visible.map(contract => (

@@ -4,6 +4,7 @@ import { useRelayContext } from '../context/RelayContext'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useNavBadges } from '../hooks/useNavBadges'
 import { useElectrumContext } from '../context/ElectrumContext'
+import { useLang } from '../context/LangContext'
 import NavBadge from './NavBadge'
 import { db } from '../db'
 
@@ -13,18 +14,12 @@ const STATUS_COLOR = {
   disconnected: 'bg-negative',
 }
 
-const links = [
-  { to: '/', label: 'markets' },
-  { to: '/oracle', label: 'oracle' },
-  { to: '/contracts', label: 'contracts' },
-  { to: '/wallet', label: 'wallet' },
-]
-
 function UserMenu() {
   const user = useNostrUser()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const navigate = useNavigate()
+  const { t, lang, setLang } = useLang()
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -35,7 +30,7 @@ function UserMenu() {
   }, [])
 
   async function handleClearData() {
-    if (!confirm('Clear all local data? This deletes your contracts, wallet keys, and cached markets.')) return
+    if (!confirm(t('nav.clear_data') + '?')) return
     await db.delete()
     window.location.reload()
   }
@@ -74,19 +69,35 @@ function UserMenu() {
             </p>
           </div>
 
+          {/* Language toggle */}
+          <div className="px-4 py-2.5 border-b border-ink/5 flex items-center justify-between">
+            <span className="text-xs text-ink/40">language</span>
+            <div className="flex rounded-lg border border-ink/10 overflow-hidden text-xs">
+              {(['en', 'es'] as const).map(l => (
+                <button
+                  key={l}
+                  onClick={() => setLang(l)}
+                  className={`px-2.5 py-1 transition-colors uppercase tracking-wider ${lang === l ? 'bg-ink/10 text-ink/80' : 'text-ink/30 hover:text-ink/60'}`}
+                >
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Menu items */}
           <div className="py-1">
             <button
               onClick={() => { setOpen(false); navigate('/settings') }}
               className="w-full text-left px-4 py-2.5 text-sm text-ink/60 hover:bg-ink/5 transition-colors"
             >
-              settings
+              {t('nav.settings')}
             </button>
             <button
               onClick={handleClearData}
               className="w-full text-left px-4 py-2.5 text-sm text-negative hover:bg-negative/5 transition-colors"
             >
-              clear local data
+              {t('nav.clear_data')}
             </button>
           </div>
         </div>
@@ -99,6 +110,14 @@ export default function Navbar() {
   const { status } = useRelayContext()
   const { blockHeight } = useElectrumContext()
   const badges = useNavBadges()
+  const { t } = useLang()
+
+  const links = [
+    { to: '/', key: 'nav.markets' as const },
+    { to: '/oracle', key: 'nav.oracle' as const },
+    { to: '/contracts', key: 'nav.contracts' as const },
+    { to: '/wallet', key: 'nav.wallet' as const },
+  ]
 
   return (
     <header className="border-b border-ink/10 px-6 py-3 flex items-center justify-between bg-navbar">
@@ -113,7 +132,7 @@ export default function Navbar() {
       {/* Right side: links + status + user */}
       <div className="flex items-center gap-6">
         <nav className="flex items-center gap-5">
-          {links.map(({ to, label }) => (
+          {links.map(({ to, key }) => (
             <NavLink
               key={to}
               to={to}
@@ -122,7 +141,7 @@ export default function Navbar() {
                 `relative text-sm transition-colors ${isActive ? 'text-ink font-medium' : 'text-ink/50 hover:text-ink/80'}`
               }
             >
-              {label}
+              {t(key)}
               <NavBadge count={badges[to] ?? 0} />
             </NavLink>
           ))}

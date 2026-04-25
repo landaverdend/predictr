@@ -3,11 +3,13 @@ import type { Market } from '../../lib/market'
 import { randomHex } from '../../lib/market'
 import { KIND_OFFER } from '../../lib/kinds'
 import { useRelayContext } from '../../context/RelayContext'
+import { useLang } from '../../context/LangContext'
 import { db } from '../../db'
 import { toast } from 'sonner'
 
 export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () => void }) {
   const { publish } = useRelayContext()
+  const { t } = useLang()
   const [side, setSide] = useState<'YES' | 'NO'>('YES')
   const [makerStake, setMakerStake] = useState('')
   const [confidence, setConfidence] = useState('50')
@@ -88,7 +90,7 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
         className="relative w-full max-w-sm bg-surface border border-ink/10 rounded-xl p-7 space-y-6"
       >
         <div className="flex items-center justify-between">
-          <p className="text-sm font-medium">place bet</p>
+          <p className="text-sm font-medium">{t('bet.title')}</p>
           <button type="button" onClick={onDone} className="text-ink/30 hover:text-ink/60 transition-colors text-xl leading-none">×</button>
         </div>
 
@@ -111,7 +113,7 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
         </div>
 
         <div className="space-y-2">
-          <label className="text-xs text-ink/40">your stake (sats)</label>
+          <label className="text-xs text-ink/40">{t('bet.stake')}</label>
           <input
             type="number"
             min="1"
@@ -124,7 +126,7 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-xs text-ink/40">confidence</label>
+            <label className="text-xs text-ink/40">{t('bet.confidence')}</label>
             <span className="text-xs font-mono text-ink/60">{confidenceNum}%</span>
           </div>
           <input
@@ -144,11 +146,11 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
 
         <div className="bg-ink/5 rounded-lg px-4 py-4 space-y-2 text-xs">
           <div className="flex justify-between">
-            <span className="text-ink/40">taker puts up</span>
+            <span className="text-ink/40">{t('bet.taker_puts')}</span>
             <span className="font-mono text-ink/70">{impliedTakerStake > 0 ? `${impliedTakerStake.toLocaleString()} sats` : '—'}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-ink/40">winner takes</span>
+            <span className="text-ink/40">{t('bet.winner_takes')}</span>
             <span className="font-mono text-ink/70">{impliedTakerStake > 0 ? `${(makerStakeNum + impliedTakerStake).toLocaleString()} sats` : '—'}</span>
           </div>
         </div>
@@ -160,14 +162,14 @@ export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () =>
             onClick={onDone}
             className="flex-1 py-3 rounded-lg text-sm border border-ink/10 text-ink/40 hover:bg-ink/5 transition-colors"
           >
-            cancel
+            {t('bet.cancel')}
           </button>
           <button
             type="submit"
             disabled={!makerStake || status === 'publishing' || status === 'done'}
             className="flex-1 py-3 rounded-lg text-sm font-medium bg-brand text-white hover:bg-brand-light disabled:opacity-20 disabled:cursor-not-allowed transition-all"
           >
-            {status === 'publishing' ? 'posting...' : 'post offer'}
+            {status === 'publishing' ? t('bet.posting') : t('bet.post')}
           </button>
         </div>
       </form>

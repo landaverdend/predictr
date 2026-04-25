@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRelayContext } from '../../context/RelayContext'
+import { useLang } from '../../context/LangContext'
 import { db } from '../../db'
 import { KIND_MARKET_ANNOUNCEMENT } from '../../lib/kinds'
 
@@ -17,6 +18,7 @@ async function sha256hex(hex: string): Promise<string> {
 
 export function CreateMarketForm() {
   const { publish, relays: savedRelays } = useRelayContext()
+  const { t } = useLang()
   const [question, setQuestion] = useState('')
   const [description, setDescription] = useState('')
   const [resolutionBlockheight, setResolutionBlockheight] = useState('')
@@ -134,13 +136,13 @@ export function CreateMarketForm() {
   if (status === 'done') {
     return (
       <div className="border border-positive/20 bg-positive/5 rounded-lg p-6 text-center space-y-2">
-        <p className="text-positive font-medium">market published</p>
-        <p className="text-xs text-ink/40">preimages saved — resolve from the "my markets" tab when ready</p>
+        <p className="text-positive font-medium">{t('create.published_title')}</p>
+        <p className="text-xs text-ink/40">{t('create.published_body')}</p>
         <button
           onClick={() => { setStatus('idle'); setQuestion(''); setDescription(''); setResolutionBlockheight(''); setImageUri('') }}
           className="mt-4 text-xs text-ink/40 hover:text-ink/70 underline"
         >
-          create another
+          {t('create.create_another')}
         </button>
       </div>
     )
@@ -149,7 +151,7 @@ export function CreateMarketForm() {
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-1.5">
-        <label className="text-xs text-ink/50 uppercase tracking-wider">question</label>
+        <label className="text-xs text-ink/50 uppercase tracking-wider">{t('create.question')}</label>
         <input
           type="text"
           placeholder="Will BTC hit 100k before June 1 2026?"
@@ -161,7 +163,7 @@ export function CreateMarketForm() {
 
       <div className="space-y-1.5">
         <label className="text-xs text-ink/50 uppercase tracking-wider">
-          description <span className="normal-case text-ink/30">(optional)</span>
+          {t('create.description')} <span className="normal-case text-ink/30">{t('create.optional')}</span>
         </label>
         <textarea
           placeholder="Any additional context about how this market will be resolved..."
@@ -174,7 +176,7 @@ export function CreateMarketForm() {
 
       <div className="space-y-1.5">
         <label className="text-xs text-ink/50 uppercase tracking-wider">
-          image <span className="normal-case text-ink/30">(optional)</span>
+          {t('create.image')} <span className="normal-case text-ink/30">{t('create.optional')}</span>
         </label>
         {imageUri ? (
           <div className="relative">
@@ -188,13 +190,13 @@ export function CreateMarketForm() {
               onClick={() => setImageUri('')}
               className="absolute top-2 right-2 text-xs bg-base/80 border border-ink/20 rounded px-2 py-1 text-ink/60 hover:text-ink transition-colors"
             >
-              remove
+              {t('create.remove')}
             </button>
           </div>
         ) : (
           <label className={`flex flex-col items-center justify-center w-full h-24 border border-dashed border-ink/20 rounded-lg cursor-pointer hover:border-ink/40 transition-colors ${imageUploading ? 'opacity-50 pointer-events-none' : ''}`}>
             <span className="text-xs text-ink/30">
-              {imageUploading ? 'uploading…' : 'click to upload via nostr.build'}
+              {imageUploading ? t('create.uploading') : t('create.upload_prompt')}
             </span>
             <input
               type="file"
@@ -208,7 +210,7 @@ export function CreateMarketForm() {
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs text-ink/50 uppercase tracking-wider">resolution blockheight</label>
+        <label className="text-xs text-ink/50 uppercase tracking-wider">{t('create.blockheight')}</label>
         <input
           type="number"
           placeholder="895000"
@@ -216,11 +218,11 @@ export function CreateMarketForm() {
           onChange={e => setResolutionBlockheight(e.target.value)}
           className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors font-mono"
         />
-        <p className="text-xs text-ink/30">the block at or after which you commit to publishing the outcome</p>
+        <p className="text-xs text-ink/30">{t('create.blockheight_help')}</p>
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-xs text-ink/50 uppercase tracking-wider">relays</label>
+        <label className="text-xs text-ink/50 uppercase tracking-wider">{t('create.relays')}</label>
         <div className="space-y-2">
           {relays.map(url => (
             <div key={url} className="flex items-center justify-between bg-ink/5 border border-ink/10 rounded-lg px-4 py-2.5">
@@ -244,7 +246,7 @@ export function CreateMarketForm() {
             disabled={!relayInput.trim()}
             className="px-4 py-2.5 text-sm border border-ink/20 rounded-lg hover:bg-ink/5 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
           >
-            add
+            {t('create.add')}
           </button>
         </div>
       </div>
@@ -256,7 +258,7 @@ export function CreateMarketForm() {
         disabled={!question || !resolutionBlockheight || status === 'publishing'}
         className="w-full py-3 rounded-lg text-sm font-medium bg-brand text-white hover:bg-brand-light disabled:opacity-20 disabled:cursor-not-allowed transition-all"
       >
-        {status === 'publishing' ? 'publishing...' : 'publish market'}
+        {status === 'publishing' ? t('create.publishing') : t('create.publish')}
       </button>
     </form>
   )

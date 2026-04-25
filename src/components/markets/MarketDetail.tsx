@@ -9,9 +9,11 @@ import { TakeOfferModal } from './TakeOfferModal'
 import { Avatar } from '../Avatar'
 import { Input } from '../Input'
 import { useProfiles, type NostrProfile } from '../../hooks/useProfiles'
+import { useLang } from '../../context/LangContext'
 
 function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProfile | undefined; onTake: () => void }) {
   const navigate = useNavigate()
+  const { t } = useLang()
   const displayName = profile?.name ?? truncate(offer.makerPubkey)
 
   return (
@@ -36,7 +38,7 @@ function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProf
         <div className="min-w-0">
           <p className="text-sm font-mono font-medium">{offer.makerStake.toLocaleString()} sats</p>
           <p className="text-[11px] text-ink/30 mt-0.5 truncate">
-            {offer.confidence}% conf · {takerStake(offer).toLocaleString()} to take
+            {offer.confidence}% {t('detail.conf')} · {takerStake(offer).toLocaleString()} {t('detail.to_take')}
           </p>
         </div>
       </div>
@@ -45,13 +47,13 @@ function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProf
       <div className="flex items-center gap-3 shrink-0 text-xs text-ink/30">
         <span className="hidden sm:block">{timeAgo(offer.createdAt)}</span>
         {offer.status === 'filled' ? (
-          <span className="text-ink/20 px-3 py-1.5">filled</span>
+          <span className="text-ink/20 px-3 py-1.5">{t('detail.offer_filled')}</span>
         ) : (
           <button
             onClick={onTake}
             className="border border-ink/20 rounded px-3 py-1.5 hover:bg-ink/5 transition-colors text-ink/60"
           >
-            take
+            {t('detail.offer_take')}
           </button>
         )}
       </div>
@@ -71,6 +73,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
   const [placing, setPlacing] = useState(false)
   const [taking, setTaking] = useState<Offer | null>(null)
   const navigate = useNavigate()
+  const { t } = useLang()
 
   const makerPubkeys = useMemo(
     () => [...new Set(offers.map(o => o.makerPubkey))],
@@ -107,7 +110,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
   return (
     <div className="space-y-6">
       <button onClick={onBack} className="flex items-center gap-2 text-sm text-ink/40 hover:text-ink/70 transition-colors">
-        <span>←</span> all markets
+        {t('detail.back')}
       </button>
 
       <div className="border border-ink/10 rounded-xl overflow-hidden">
@@ -131,7 +134,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
             </div>
             <div className="flex justify-between text-xs font-mono">
               <span className="text-positive font-medium">YES {yesPct}%</span>
-              {!hasVolume && <span className="text-ink/25 text-[10px]">no volume yet</span>}
+              {!hasVolume && <span className="text-ink/25 text-[10px]">{t('detail.no_volume')}</span>}
               <span className="text-negative/80 font-medium">{noPct}% NO</span>
             </div>
           </div>
@@ -139,15 +142,15 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
           {/* Stats */}
           <div className="grid grid-cols-3 gap-3 text-center">
             <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">open offers</p>
+              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('detail.open_offers')}</p>
               <p className="text-lg font-mono font-semibold">{stats.openCount}</p>
             </div>
             <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">filled</p>
+              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('detail.filled')}</p>
               <p className="text-lg font-mono font-semibold">{stats.filledCount}</p>
             </div>
             <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
-              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">volume</p>
+              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('detail.volume')}</p>
               <p className="text-lg font-mono font-semibold">
                 {stats.totalVolume > 0 ? stats.totalVolume.toLocaleString() : '—'}
               </p>
@@ -160,12 +163,12 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
             <button onClick={() => navigate(`/user/${market.pubkey}`)} className="flex items-center gap-3 hover:opacity-75 transition-opacity">
               <Avatar pubkey={market.pubkey} size="md" />
               <div className="text-left">
-                <p className="text-[10px] uppercase tracking-wider text-ink/30">oracle</p>
+                <p className="text-[10px] uppercase tracking-wider text-ink/30">{t('detail.oracle')}</p>
                 <p className="text-xs font-mono text-ink/60 mt-0.5">{truncate(market.pubkey)}</p>
               </div>
             </button>
             <div className="ml-auto text-right">
-              <p className="text-[10px] uppercase tracking-wider text-ink/30">resolves at</p>
+              <p className="text-[10px] uppercase tracking-wider text-ink/30">{t('detail.resolves_at')}</p>
               <p className="text-xs font-mono font-medium text-ink/70 mt-0.5">block {market.resolutionBlockheight.toLocaleString()}</p>
             </div>
           </div>
@@ -174,25 +177,25 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
 
       {resolution && (
         <div className={`rounded-xl px-5 py-4 text-sm font-medium border ${resolution.outcome === 'YES' ? 'bg-positive/10 border-positive/20 text-positive' : 'bg-negative/10 border-negative/20 text-negative'}`}>
-          resolved: <span className="font-bold">{resolution.outcome}</span>
-          <p className="text-[11px] font-mono font-normal mt-1 opacity-60 break-all">preimage: {resolution.preimage}</p>
+          {t('detail.resolved_prefix')} <span className="font-bold">{resolution.outcome}</span>
+          <p className="text-[11px] font-mono font-normal mt-1 opacity-60 break-all">{t('detail.preimage')} {resolution.preimage}</p>
         </div>
       )}
       {!resolution && isPastDeadline && (
         <div className="rounded-xl px-5 py-4 text-sm bg-ink/5 border border-ink/10 text-ink/50">
-          past resolution block — awaiting oracle reveal
+          {t('detail.past_deadline')}
         </div>
       )}
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-ink/70 uppercase tracking-wider">offers</h3>
+          <h3 className="text-sm font-semibold text-ink/70 uppercase tracking-wider">{t('detail.offers')}</h3>
           {!isClosed && (
             <button
               onClick={() => setPlacing(true)}
               className="text-sm font-medium bg-ink/10 border border-ink/15 rounded-lg px-4 py-2 hover:bg-ink/15 transition-colors"
             >
-              place bet
+              {t('detail.place_bet')}
             </button>
           )}
         </div>
@@ -208,7 +211,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
                   onClick={() => setStatusFilter(s)}
                   className={`px-3 py-1.5 transition-colors ${statusFilter === s ? 'bg-ink/10 text-ink/80' : 'text-ink/30 hover:text-ink/60'}`}
                 >
-                  {s}
+                  {t(s === 'all' ? 'detail.filter_all' : s === 'open' ? 'detail.filter_open' : 'detail.filter_filled')}
                 </button>
               ))}
             </div>
@@ -261,7 +264,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
                 onClick={() => { setStatusFilter('all'); setMinSats(''); setMaxSats(''); setMinConf(''); setMaxConf('') }}
                 className="text-xs text-ink/30 hover:text-ink/60 transition-colors"
               >
-                clear
+                {t('detail.filter_clear')}
               </button>
             )}
           </div>
@@ -269,19 +272,19 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
 
         {offers.length === 0 ? (
           <div className="border border-ink/8 rounded-xl p-12 text-center space-y-3">
-            <p className="text-ink/25 text-sm">no offers yet</p>
+            <p className="text-ink/25 text-sm">{t('detail.no_offers')}</p>
             {!isClosed && (
               <button
                 onClick={() => setPlacing(true)}
                 className="text-sm font-medium bg-ink/8 border border-ink/12 rounded-lg px-5 py-2.5 hover:bg-ink/12 transition-colors text-ink/60"
               >
-                be the first →
+                {t('detail.be_first')}
               </button>
             )}
           </div>
         ) : filteredOffers.length === 0 ? (
           <div className="border border-ink/8 rounded-xl p-8 text-center text-ink/30 text-sm">
-            no offers match filters
+            {t('detail.no_match')}
           </div>
         ) : (
           <div className="space-y-2">

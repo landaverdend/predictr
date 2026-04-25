@@ -11,17 +11,9 @@ import { signAndBroadcastFunding, refundFunding } from '../../lib/spend'
 import { REFUND_DELAY } from '../../lib/utils'
 import { Avatar } from '../Avatar'
 import { useProfiles } from '../../hooks/useProfiles'
+import { useLang } from '../../context/LangContext'
 
-const STATUS_LABEL: Record<string, string> = {
-  offer_pending: 'open',
-  take_received: 'action needed',
-  psbt_sent: 'psbt sent',
-  awaiting_psbt: 'pending maker response',
-  funded: 'funded',
-  resolved: 'resolved',
-  refunded: 'refunded',
-  cancelled: 'cancelled',
-}
+// Status labels are derived from useLang() — see statusLabel computation in ContractDetail
 
 const STATUS_COLOR: Record<string, string> = {
   offer_pending: 'text-ink/40 bg-ink/5',
@@ -38,6 +30,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   const counterpartyPubkeys = contract.counterpartyPubkey ? [contract.counterpartyPubkey] : []
   const profiles = useProfiles(counterpartyPubkeys)
   const counterpartyProfile = contract.counterpartyPubkey ? profiles.get(contract.counterpartyPubkey) : undefined
+  const { t } = useLang()
 
   const [acceptingTaker, setAcceptingTaker] = useState<TakeRequest | null>(null)
   const [showClaim, setShowClaim] = useState(false)
@@ -111,9 +104,19 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
     ? ourSide === contract.outcome
     : null
 
+  const statusLabelMap: Record<string, string> = {
+    offer_pending: t('status.open'),
+    take_received: t('status.action_needed'),
+    psbt_sent: t('status.psbt_sent'),
+    awaiting_psbt: t('status.awaiting_psbt'),
+    funded: t('status.funded'),
+    resolved: t('status.resolved'),
+    refunded: t('status.refunded'),
+    cancelled: t('status.cancelled'),
+  }
   const statusLabel = contract.status === 'resolved'
-    ? (won === true ? 'won' : won === false ? 'lost' : 'resolved')
-    : (STATUS_LABEL[contract.status] ?? contract.status)
+    ? (won === true ? t('status.won') : won === false ? t('status.lost') : t('status.resolved'))
+    : (statusLabelMap[contract.status] ?? contract.status)
   const statusColor = contract.status === 'resolved'
     ? (won === true ? 'text-positive bg-positive/10' : won === false ? 'text-negative bg-negative/10' : 'text-ink/40 bg-ink/5')
     : (STATUS_COLOR[contract.status] ?? 'text-ink/40 bg-ink/5')
@@ -122,7 +125,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
     <>
       <div className="space-y-5">
         <button onClick={onBack} className="flex items-center gap-2 text-sm text-ink/40 hover:text-ink/70 transition-colors">
-          ← all contracts
+          {t('contract.back')}
         </button>
 
         {/* Header */}
@@ -139,7 +142,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
             <div className="flex items-center gap-3 py-3 border-y border-ink/5">
               <Avatar pubkey={contract.counterpartyPubkey} size="lg" />
               <div>
-                <p className="text-[10px] text-ink/30 uppercase tracking-wider mb-0.5">counterparty</p>
+                <p className="text-[10px] text-ink/30 uppercase tracking-wider mb-0.5">{t('contract.counterparty')}</p>
                 {counterpartyProfile?.name && (
                   <p className="text-sm font-medium leading-tight">{counterpartyProfile.name}</p>
                 )}
@@ -150,14 +153,14 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
 
           {/* Our position */}
           <div>
-            <p className="text-xs text-ink/30 uppercase tracking-wider mb-2">your position</p>
+            <p className="text-xs text-ink/30 uppercase tracking-wider mb-2">{t('contract.your_position')}</p>
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <Field label="role">{contract.role}</Field>
-              <Field label="side">
+              <Field label={t('contract.role')}>{contract.role === 'maker' ? t('contracts.role_maker') : t('contracts.role_taker')}</Field>
+              <Field label={t('contract.side')}>
                 <span className={ourSide === 'YES' ? 'text-positive' : 'text-negative'}>{ourSide}</span>
               </Field>
-              <Field label="your stake" mono>{ourStake.toLocaleString()} sats</Field>
-              <Field label="win amount" mono>
+              <Field label={t('contract.your_stake')} mono>{ourStake.toLocaleString()} sats</Field>
+              <Field label={t('contract.win_amount')} mono>
                 <span className="text-positive">{totalPot.toLocaleString()} sats</span>
               </Field>
             </div>
@@ -165,15 +168,15 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
 
           {/* Deal terms */}
           <div>
-            <p className="text-xs text-ink/30 uppercase tracking-wider mb-2">deal</p>
+            <p className="text-xs text-ink/30 uppercase tracking-wider mb-2">{t('contract.deal')}</p>
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <Field label="maker stake" mono>{contract.makerStake.toLocaleString()} sats</Field>
-              <Field label="taker stake" mono>{contract.takerStake.toLocaleString()} sats</Field>
-              <Field label="total pot" mono>{totalPot.toLocaleString()} sats</Field>
-              <Field label="confidence" mono>{contract.confidence}%</Field>
-              <Field label="resolves at block" mono>{contract.resolutionBlockheight.toLocaleString()}</Field>
+              <Field label={t('contract.maker_stake')} mono>{contract.makerStake.toLocaleString()} sats</Field>
+              <Field label={t('contract.taker_stake')} mono>{contract.takerStake.toLocaleString()} sats</Field>
+              <Field label={t('contract.total_pot')} mono>{totalPot.toLocaleString()} sats</Field>
+              <Field label={t('contract.confidence')} mono>{contract.confidence}%</Field>
+              <Field label={t('contract.resolves_at_block')} mono>{contract.resolutionBlockheight.toLocaleString()}</Field>
               {contract.fundingTxid && (
-                <Field label="funding tx" mono span2>
+                <Field label={t('contract.funding_tx')} mono span2>
                   <span className="break-all text-[10px] text-ink/50">{contract.fundingTxid}</span>
                 </Field>
               )}
@@ -186,7 +189,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
           takeRequests.length > 0 ? (
             <div className="space-y-2">
               <p className="text-xs text-caution font-medium uppercase tracking-wider">
-                {takeRequests.length} taker request{takeRequests.length !== 1 ? 's' : ''}
+                {takeRequests.length} {takeRequests.length !== 1 ? t('contract.taker_requests') : t('contract.taker_request')}
               </p>
               {takeRequests.map(({ id: msgId, req: tr }) => (
                 <div key={msgId} className="border border-caution/20 bg-caution/5 rounded-lg p-4 space-y-3">
@@ -200,26 +203,26 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
                         onClick={() => db.messages.delete(msgId)}
                         className="px-2.5 py-1 text-xs font-medium text-negative border border-negative/30 rounded-lg hover:bg-negative/10 transition-colors"
                       >
-                        refuse
+                        {t('contract.refuse')}
                       </button>
                       <button
                         onClick={() => setAcceptingTaker(tr)}
                         className="px-2.5 py-1 text-xs font-medium text-white bg-positive rounded-lg hover:bg-positive/80 transition-colors"
                       >
-                        accept
+                        {t('contract.accept')}
                       </button>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <Field label="amount" mono>{tr.input.amount.toLocaleString()} sats</Field>
-                    <Field label="input" mono>{tr.input.txid.slice(0, 8)}…:{tr.input.vout}</Field>
+                    <Field label={t('contract.amount')} mono>{tr.input.amount.toLocaleString()} sats</Field>
+                    <Field label={t('contract.input')} mono>{tr.input.txid.slice(0, 8)}…:{tr.input.vout}</Field>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
             <div className="border border-ink/10 rounded-lg p-4 text-xs text-ink/30 text-center">
-              waiting for a taker to respond…
+              {t('contract.waiting_taker')}
             </div>
           )
         )}
@@ -228,21 +231,21 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
         {contract.role === 'taker' && contract.fundingPsbt && contract.status === 'psbt_received' && (
           <div className="border border-brand/20 bg-brand/5 rounded-lg p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <p className="text-xs text-brand font-medium uppercase tracking-wider">funding psbt received</p>
+              <p className="text-xs text-brand font-medium uppercase tracking-wider">{t('contract.funding_psbt_received')}</p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={handleRefuse}
                   disabled={refusing || signing}
                   className="px-3 py-1.5 text-xs font-medium text-negative border border-negative/30 rounded-lg hover:bg-negative/10 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  refuse
+                  {t('contract.refuse')}
                 </button>
                 <button
                   onClick={handleSignAndBroadcast}
                   disabled={signing || refusing}
                   className="px-3 py-1.5 text-xs font-medium text-white bg-brand rounded-lg hover:bg-brand-light disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                 >
-                  {signing ? 'broadcasting…' : 'sign & broadcast'}
+                  {signing ? t('contract.broadcasting') : t('contract.sign_broadcast')}
                 </button>
               </div>
             </div>
@@ -256,21 +259,21 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
           <div className="border border-positive/20 bg-positive/5 rounded-lg p-5 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-positive font-medium uppercase tracking-wider">winnings ready</p>
-                <p className="text-xs text-ink/30 mt-0.5">{totalPot.toLocaleString()} sats available</p>
+                <p className="text-xs text-positive font-medium uppercase tracking-wider">{t('contract.winnings_ready')}</p>
+                <p className="text-xs text-ink/30 mt-0.5">{totalPot.toLocaleString()} sats {t('contract.available')}</p>
               </div>
               <button
                 onClick={() => setShowClaim(true)}
                 className="px-3 py-1.5 text-xs font-medium text-white bg-positive rounded-lg hover:bg-positive/80 transition-colors"
               >
-                claim
+                {t('contract.claim')}
               </button>
             </div>
           </div>
         )}
         {won === true && contract.claimTxid && (
           <div className="border border-ink/10 rounded-lg p-4 text-xs space-y-1">
-            <p className="text-ink/40 uppercase tracking-wider">claimed</p>
+            <p className="text-ink/40 uppercase tracking-wider">{t('contract.claimed')}</p>
             <p className="font-mono text-ink/40 break-all text-[10px]">{contract.claimTxid}</p>
           </div>
         )}
@@ -280,9 +283,9 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
           <div className="border border-ink/10 rounded-lg p-5 space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-ink/50 font-medium uppercase tracking-wider">refund</p>
+                <p className="text-xs text-ink/50 font-medium uppercase tracking-wider">{t('contract.refund')}</p>
                 <p className="text-xs text-ink/30 mt-0.5">
-                  spendable after block {(contract.resolutionBlockheight + REFUND_DELAY).toLocaleString()}
+                  {t('contract.spendable_after')} {(contract.resolutionBlockheight + REFUND_DELAY).toLocaleString()}
                 </p>
               </div>
               <button
@@ -290,7 +293,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
                 disabled={refunding}
                 className="px-3 py-1.5 text-xs font-medium text-ink bg-elevated border border-ink/20 rounded-lg hover:bg-elevated/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                {refunding ? 'broadcasting…' : 'claim refund'}
+                {refunding ? t('contract.refunding') : t('contract.claim_refund')}
               </button>
             </div>
             {refundError && <p className="text-xs text-negative">{refundError}</p>}

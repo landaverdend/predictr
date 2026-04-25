@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import type { NostrEvent } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext } from '../context/ElectrumContext'
+import { useLang } from '../context/LangContext'
 import { parseMarket, parseOffer, tag, isValidMarket } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import { MarketGrid } from '../components/markets/MarketGrid'
@@ -14,6 +15,7 @@ export default function MarketsPage() {
   const navigate = useNavigate()
   const { subscribe } = useRelayContext()
   const { blockHeight } = useElectrumContext()
+  const { t } = useLang()
   const [markets, setMarkets] = useState<Record<string, Market>>({})
   const [offers, setOffers] = useState<Record<string, Offer[]>>({})
   const [resolutions, setResolutions] = useState<Record<string, Resolution>>({})
@@ -56,12 +58,12 @@ export default function MarketsPage() {
   return (
     <main className="flex-1 px-6 py-12 max-w-3xl mx-auto w-full">
       <div className="mb-10">
-        <h1 className="text-2xl font-bold mb-2">markets</h1>
-        <p className="text-ink/40 text-sm">open bets on nostr</p>
+        <h1 className="text-2xl font-bold mb-2">{t('markets.title')}</h1>
+        <p className="text-ink/40 text-sm">{t('markets.subtitle')}</p>
       </div>
       {Object.values(markets).length === 0 ? (
         <div className="text-center text-ink/30 text-sm py-24">
-          no markets found on relay
+          {t('markets.empty')}
         </div>
       ) : (
         <MarketGrid
