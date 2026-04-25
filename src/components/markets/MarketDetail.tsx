@@ -105,83 +105,92 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
   const noPct = 100 - yesPct
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <button onClick={onBack} className="flex items-center gap-2 text-sm text-ink/40 hover:text-ink/70 transition-colors">
         <span>←</span> all markets
       </button>
 
-      <div className="border border-ink/10 rounded-lg overflow-hidden">
+      <div className="border border-ink/10 rounded-xl overflow-hidden">
         <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} />
-        <div className="p-6 space-y-5">
-          <h2 className="text-lg font-semibold leading-snug">{market.question}</h2>
-          {market.description && (
-            <p className="text-sm text-ink/50 leading-relaxed">{market.description}</p>
-          )}
+        <div className="p-6 space-y-6">
+          <div>
+            <h2 className="text-xl font-semibold leading-snug">{market.question}</h2>
+            {market.description && (
+              <p className="text-sm text-ink/50 leading-relaxed mt-2">{market.description}</p>
+            )}
+          </div>
 
-          {hasVolume && (
-            <div className="space-y-2">
-              <div className="flex h-2 rounded-full overflow-hidden">
-                <div className="bg-positive/60 transition-all duration-500" style={{ width: `${yesPct}%` }} />
-                <div className="bg-negative/60 flex-1" />
-              </div>
-              <div className="flex justify-between text-xs font-mono">
-                <span className="text-positive">YES {yesPct}%</span>
-                <span className="text-negative">{noPct}% NO</span>
-              </div>
+          {/* YES / NO sentiment bar — always visible */}
+          <div className="space-y-2">
+            <div className="flex h-2.5 rounded-full overflow-hidden bg-ink/5">
+              <div
+                className="bg-positive/70 transition-all duration-700 rounded-full"
+                style={{ width: `${yesPct}%` }}
+              />
+              <div className="bg-negative/50 flex-1 rounded-full" />
             </div>
-          )}
-
-          <div className="grid grid-cols-3 gap-3 text-center">
-            <div className="bg-ink/5 rounded-lg px-3 py-3">
-              <p className="text-xs text-ink/30 mb-1">open offers</p>
-              <p className="text-sm font-mono font-medium">{stats.openCount}</p>
-            </div>
-            <div className="bg-ink/5 rounded-lg px-3 py-3">
-              <p className="text-xs text-ink/30 mb-1">filled</p>
-              <p className="text-sm font-mono font-medium">{stats.filledCount}</p>
-            </div>
-            <div className="bg-ink/5 rounded-lg px-3 py-3">
-              <p className="text-xs text-ink/30 mb-1">volume</p>
-              <p className="text-sm font-mono font-medium">{stats.totalVolume > 0 ? `${stats.totalVolume.toLocaleString()}` : '—'}</p>
-              {stats.totalVolume > 0 && <p className="text-[10px] text-ink/30">sats</p>}
+            <div className="flex justify-between text-xs font-mono">
+              <span className="text-positive font-medium">YES {yesPct}%</span>
+              {!hasVolume && <span className="text-ink/25 text-[10px]">no volume yet</span>}
+              <span className="text-negative/80 font-medium">{noPct}% NO</span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 pt-2 border-t border-ink/5">
+          {/* Stats */}
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">open offers</p>
+              <p className="text-lg font-mono font-semibold">{stats.openCount}</p>
+            </div>
+            <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">filled</p>
+              <p className="text-lg font-mono font-semibold">{stats.filledCount}</p>
+            </div>
+            <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
+              <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">volume</p>
+              <p className="text-lg font-mono font-semibold">
+                {stats.totalVolume > 0 ? stats.totalVolume.toLocaleString() : '—'}
+              </p>
+              {stats.totalVolume > 0 && <p className="text-[10px] text-ink/30 mt-0.5">sats</p>}
+            </div>
+          </div>
+
+          {/* Oracle + resolution */}
+          <div className="flex items-center gap-4 pt-3 border-t border-ink/8">
             <button onClick={() => navigate(`/user/${market.pubkey}`)} className="flex items-center gap-3 hover:opacity-75 transition-opacity">
               <Avatar pubkey={market.pubkey} size="md" />
               <div className="text-left">
-                <p className="text-xs text-ink/30">oracle</p>
+                <p className="text-[10px] uppercase tracking-wider text-ink/30">oracle</p>
                 <p className="text-xs font-mono text-ink/60 mt-0.5">{truncate(market.pubkey)}</p>
               </div>
             </button>
             <div className="ml-auto text-right">
-              <p className="text-xs text-ink/30">resolves at</p>
-              <p className="text-xs font-mono text-ink/60 mt-0.5">block {market.resolutionBlockheight.toLocaleString()}</p>
+              <p className="text-[10px] uppercase tracking-wider text-ink/30">resolves at</p>
+              <p className="text-xs font-mono font-medium text-ink/70 mt-0.5">block {market.resolutionBlockheight.toLocaleString()}</p>
             </div>
           </div>
         </div>
       </div>
 
       {resolution && (
-        <div className={`rounded-lg px-4 py-3 text-sm font-medium border ${resolution.outcome === 'YES' ? 'bg-positive/10 border-positive/20 text-positive' : 'bg-negative/10 border-negative/20 text-negative'}`}>
+        <div className={`rounded-xl px-5 py-4 text-sm font-medium border ${resolution.outcome === 'YES' ? 'bg-positive/10 border-positive/20 text-positive' : 'bg-negative/10 border-negative/20 text-negative'}`}>
           resolved: <span className="font-bold">{resolution.outcome}</span>
           <p className="text-[11px] font-mono font-normal mt-1 opacity-60 break-all">preimage: {resolution.preimage}</p>
         </div>
       )}
       {!resolution && isPastDeadline && (
-        <div className="rounded-lg px-4 py-3 text-sm bg-ink/5 border border-ink/10 text-ink/50">
+        <div className="rounded-xl px-5 py-4 text-sm bg-ink/5 border border-ink/10 text-ink/50">
           past resolution block — awaiting oracle reveal
         </div>
       )}
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">offers</h3>
+          <h3 className="text-sm font-semibold text-ink/70 uppercase tracking-wider">offers</h3>
           {!isClosed && (
             <button
               onClick={() => setPlacing(true)}
-              className="text-xs border border-ink/20 rounded px-3 py-1.5 hover:bg-ink/5 transition-colors"
+              className="text-sm font-medium bg-ink/10 border border-ink/15 rounded-lg px-4 py-2 hover:bg-ink/15 transition-colors"
             >
               place bet
             </button>
@@ -259,11 +268,19 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
         )}
 
         {offers.length === 0 ? (
-          <div className="border border-ink/10 rounded-lg p-12 text-center text-ink/30 text-sm">
-            no offers yet — be the first
+          <div className="border border-ink/8 rounded-xl p-12 text-center space-y-3">
+            <p className="text-ink/25 text-sm">no offers yet</p>
+            {!isClosed && (
+              <button
+                onClick={() => setPlacing(true)}
+                className="text-sm font-medium bg-ink/8 border border-ink/12 rounded-lg px-5 py-2.5 hover:bg-ink/12 transition-colors text-ink/60"
+              >
+                be the first →
+              </button>
+            )}
           </div>
         ) : filteredOffers.length === 0 ? (
-          <div className="border border-ink/10 rounded-lg p-8 text-center text-ink/30 text-sm">
+          <div className="border border-ink/8 rounded-xl p-8 text-center text-ink/30 text-sm">
             no offers match filters
           </div>
         ) : (
