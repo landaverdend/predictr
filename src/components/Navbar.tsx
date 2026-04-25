@@ -120,18 +120,21 @@ export default function Navbar() {
   ]
 
   return (
-    <header className="border-b border-ink/10 px-6 py-3 flex items-center justify-between bg-navbar">
-      {/* Logo + block height */}
-      <div className="flex items-center gap-4">
-        <span className="font-mono font-bold tracking-tight text-brand">predictr</span>
-        {blockHeight !== null && (
-          <span className="font-mono text-xs text-ink/30">block {blockHeight.toLocaleString()}</span>
-        )}
-      </div>
+    <>
+      {/* ── Top bar ─────────────────────────────────────────────────── */}
+      <header className="border-b border-ink/10 px-4 sm:px-6 py-3 flex items-center justify-between bg-navbar">
+        {/* Logo + block height */}
+        <div className="flex items-center gap-3">
+          <span className="font-mono font-bold tracking-tight text-brand">predictr</span>
+          {blockHeight !== null && (
+            <span className="font-mono text-xs text-ink/30 hidden sm:inline">
+              block {blockHeight.toLocaleString()}
+            </span>
+          )}
+        </div>
 
-      {/* Right side: links + status + user */}
-      <div className="flex items-center gap-6">
-        <nav className="flex items-center gap-5">
+        {/* Desktop nav */}
+        <nav className="hidden sm:flex items-center gap-5">
           {links.map(({ to, key }) => (
             <NavLink
               key={to}
@@ -147,12 +150,66 @@ export default function Navbar() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-1.5 text-xs text-ink/30">
+        {/* Right: status dot + user */}
+        <div className="flex items-center gap-3">
           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_COLOR[status]}`} />
+          <UserMenu />
         </div>
+      </header>
 
-        <UserMenu />
-      </div>
-    </header>
+      {/* ── Mobile bottom tab bar ────────────────────────────────────── */}
+      <nav className="sm:hidden fixed bottom-0 inset-x-0 z-40 bg-navbar border-t border-ink/10 flex">
+        {links.map(({ to, key }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end
+            className={({ isActive }) =>
+              `relative flex-1 flex flex-col items-center justify-center py-2.5 gap-0.5 text-[10px] transition-colors ${isActive ? 'text-ink' : 'text-ink/35 hover:text-ink/60'}`
+            }
+          >
+            {({ isActive }) => (
+              <>
+                <TabIcon routeKey={key} active={isActive} />
+                <span className="leading-none">{t(key)}</span>
+                {(badges[to] ?? 0) > 0 && (
+                  <span className="absolute top-1.5 right-1/4 translate-x-3 min-w-[14px] h-[14px] rounded-full bg-brand text-[9px] text-white flex items-center justify-center px-1">
+                    {badges[to]}
+                  </span>
+                )}
+              </>
+            )}
+          </NavLink>
+        ))}
+      </nav>
+
+    </>
+  )
+}
+
+function TabIcon({ routeKey, active }: { routeKey: string; active: boolean }) {
+  const opacity = active ? 'opacity-100' : 'opacity-40'
+  if (routeKey === 'nav.markets') return (
+    <svg className={`w-5 h-5 ${opacity}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h2l2-8 4 16 3-10 2 5 2-3h3" />
+    </svg>
+  )
+  if (routeKey === 'nav.oracle') return (
+    <svg className={`w-5 h-5 ${opacity}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l2.5 2.5" />
+    </svg>
+  )
+  if (routeKey === 'nav.contracts') return (
+    <svg className={`w-5 h-5 ${opacity}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+    </svg>
+  )
+  // wallet
+  return (
+    <svg className={`w-5 h-5 ${opacity}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M16 12a1 1 0 110 2 1 1 0 010-2z" />
+    </svg>
   )
 }

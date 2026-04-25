@@ -7,10 +7,10 @@ import { useLang } from '../../context/LangContext'
 import { db } from '../../db'
 import { toast } from 'sonner'
 
-export function PlaceBetForm({ market, onDone }: { market: Market; onDone: () => void }) {
+export function PlaceBetForm({ market, initialSide = 'YES', onDone }: { market: Market; initialSide?: 'YES' | 'NO'; onDone: () => void }) {
   const { publish } = useRelayContext()
   const { t } = useLang()
-  const [side, setSide] = useState<'YES' | 'NO'>('YES')
+  const [side, setSide] = useState<'YES' | 'NO'>(initialSide)
   const [makerStake, setMakerStake] = useState('')
   const [confidence, setConfidence] = useState('50')
 

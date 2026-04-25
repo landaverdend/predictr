@@ -470,20 +470,66 @@ function SendModal({
 
 // ── Key table row ─────────────────────────────────────────────────────────────
 
-function KeyRow({ walletKey, balance }: { walletKey: WalletKey; balance: number | undefined }) {
+function truncateAddr(addr: string) {
+  return `${addr.slice(0, 10)}…${addr.slice(-6)}`
+}
+
+function CopyButton({ text, className = '' }: { text: string; className?: string }) {
+  const [copied, setCopied] = useState(false)
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation()
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
   return (
-    <tr className="border-t border-ink/5 hover:bg-elevated transition-colors">
-      <td className="px-4 py-2.5 font-mono text-[11px] text-ink/30 text-center w-8">{walletKey.id}</td>
-      <td className="px-4 py-2.5 font-mono text-xs text-ink/70 break-all">{walletKey.address}</td>
-      <td className="px-4 py-2.5 font-mono text-xs text-right whitespace-nowrap">
-        {balance === undefined ? (
-          <span className="text-ink/20">…</span>
-        ) : balance > 0 ? (
-          <span className="text-positive">{balance.toLocaleString()} sats</span>
-        ) : (
-          <span className="text-ink/20">—</span>
-        )}
+    <button
+      onClick={handleCopy}
+      title="copy address"
+      className={`shrink-0 transition-colors ${copied ? 'text-positive' : 'text-ink/25 hover:text-ink/60'} ${className}`}
+    >
+      {copied ? (
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      ) : (
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <rect x="9" y="9" width="13" height="13" rx="2" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
+function KeyRow({ walletKey, balance }: { walletKey: WalletKey; balance: number | undefined }) {
+  const balanceEl = balance === undefined ? (
+    <span className="text-ink/20">…</span>
+  ) : balance > 0 ? (
+    <span className="text-positive">{balance.toLocaleString()} sats</span>
+  ) : (
+    <span className="text-ink/20">—</span>
+  )
+
+  return (
+    <tr className="group border-t border-ink/5 hover:bg-elevated transition-colors">
+      <td className="px-3 py-3 font-mono text-[11px] text-ink/30 text-center w-8">{walletKey.id}</td>
+      {/* Mobile: truncated address + copy icon to the right, balance below */}
+      <td className="sm:hidden px-3 py-3">
+        <div className="flex items-center gap-2">
+          <p className="font-mono text-xs text-ink/70">{truncateAddr(walletKey.address)}</p>
+          <CopyButton text={walletKey.address} />
+        </div>
+        <p className="font-mono text-xs mt-0.5">{balanceEl}</p>
       </td>
+      {/* Desktop: full address with copy on hover */}
+      <td className="hidden sm:table-cell px-3 py-3 font-mono text-xs text-ink/70 break-all">
+        <div className="flex items-start gap-2">
+          <span>{walletKey.address}</span>
+          <CopyButton text={walletKey.address} className="opacity-0 group-hover:opacity-100 mt-0.5" />
+        </div>
+      </td>
+      <td className="hidden sm:table-cell px-3 py-3 font-mono text-xs text-right whitespace-nowrap">{balanceEl}</td>
     </tr>
   );
 }
@@ -602,31 +648,33 @@ export default function WalletPage() {
   // ── Unlocked wallet ────────────────────────────────────────────────────────
 
   return (
-    <main className="flex-1 px-6 py-10 max-w-3xl mx-auto w-full space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
+    <main className="flex-1 px-4 sm:px-6 py-8 max-w-3xl mx-auto w-full space-y-6">
+      {/* Header: title + balance + send */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold mb-1">wallet</h1>
-          <div className="flex items-center gap-2 mt-0.5">
+          <div className="flex items-center gap-2">
             <p className="text-ink/40 text-sm">{keys?.length ?? HD_KEY_COUNT} addresses · BIP86 Taproot</p>
             <button
               onClick={refresh}
               disabled={loading}
-              className="text-xs text-ink/30 hover:text-ink/60 transition-colors disabled:opacity-30"
+              className={`text-ink/30 hover:text-ink/60 transition-colors disabled:opacity-30 ${loading ? 'animate-spin' : ''}`}
               title="refresh balances"
             >
-              {loading ? '↻' : '↻'}
+              ↻
             </button>
           </div>
         </div>
-        <div className="text-right space-y-1">
-          <p className="text-xs text-ink/30 uppercase tracking-wider">total balance</p>
-          <p className="text-lg font-mono font-medium text-positive mt-0.5">
-            {totalBalance > 0 ? `${totalBalance.toLocaleString()} sats` : '—'}
+        <div className="text-right shrink-0 space-y-1.5">
+          <p className="text-[10px] text-ink/30 uppercase tracking-wider">total balance</p>
+          <p className="text-xl sm:text-2xl font-mono font-semibold text-positive leading-none">
+            {totalBalance > 0 ? totalBalance.toLocaleString() : '—'}
           </p>
+          {totalBalance > 0 && <p className="text-xs text-positive/60">sats</p>}
           {totalBalance > 0 && (
             <button
               onClick={() => setShowSend(true)}
-              className="mt-1 text-xs px-3 py-1.5 rounded-lg bg-brand text-white hover:bg-brand-light transition-all"
+              className="text-xs px-4 py-2 rounded-lg bg-brand text-white hover:bg-brand-light transition-all"
             >
               send
             </button>
@@ -639,9 +687,12 @@ export default function WalletPage() {
           <table className="w-full">
             <thead>
               <tr className="bg-elevated">
-                <th className="px-4 py-2.5 text-center text-xs text-ink/30 uppercase tracking-wider font-normal w-8">#</th>
-                <th className="px-4 py-2.5 text-left text-xs text-ink/30 uppercase tracking-wider font-normal">address</th>
-                <th className="px-4 py-2.5 text-right text-xs text-ink/30 uppercase tracking-wider font-normal">balance</th>
+                <th className="px-3 py-2.5 text-center text-xs text-ink/30 uppercase tracking-wider font-normal w-8">#</th>
+                {/* Mobile header: combined address/balance col */}
+                <th className="sm:hidden px-3 py-2.5 text-left text-xs text-ink/30 uppercase tracking-wider font-normal">address · balance</th>
+                {/* Desktop headers */}
+                <th className="hidden sm:table-cell px-3 py-2.5 text-left text-xs text-ink/30 uppercase tracking-wider font-normal">address</th>
+                <th className="hidden sm:table-cell px-3 py-2.5 text-right text-xs text-ink/30 uppercase tracking-wider font-normal">balance</th>
               </tr>
             </thead>
             <tbody>

@@ -11,6 +11,12 @@ import { Input } from '../Input'
 import { useProfiles, type NostrProfile } from '../../hooks/useProfiles'
 import { useLang } from '../../context/LangContext'
 
+function formatSats(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 2)}M`
+  if (n >= 1_000) return `${(n / 1_000).toFixed(n % 1_000 === 0 ? 0 : 1)}k`
+  return n.toLocaleString()
+}
+
 function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProfile | undefined; onTake: () => void }) {
   const navigate = useNavigate()
   const { t } = useLang()
@@ -70,7 +76,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
   blockHeight: number | null
   onBack: () => void
 }) {
-  const [placing, setPlacing] = useState(false)
+  const [placing, setPlacing] = useState<'YES' | 'NO' | null>(null)
   const [taking, setTaking] = useState<Offer | null>(null)
   const navigate = useNavigate()
   const { t } = useLang()
@@ -121,6 +127,21 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
             {market.description && (
               <p className="text-sm text-ink/50 leading-relaxed mt-2">{market.description}</p>
             )}
+            {!isClosed && (
+              <div className="flex flex-col gap-2 mt-5">
+                <span className="text-xs uppercase tracking-widest text-ink/30 font-medium">{t('detail.place_bet')}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPlacing('YES')}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-positive/15 text-positive border border-positive/30 hover:bg-positive/25 transition-colors"
+                  >YES</button>
+                  <button
+                    onClick={() => setPlacing('NO')}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-bold bg-negative/15 text-negative border border-negative/30 hover:bg-negative/25 transition-colors"
+                  >NO</button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* YES / NO sentiment bar — always visible */}
@@ -149,10 +170,10 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
               <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('detail.filled')}</p>
               <p className="text-lg font-mono font-semibold">{stats.filledCount}</p>
             </div>
-            <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
+            <div className="bg-ink/5 border border-ink/8 rounded-xl pl-3 pr-4 py-3.5">
               <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('detail.volume')}</p>
-              <p className="text-lg font-mono font-semibold">
-                {stats.totalVolume > 0 ? stats.totalVolume.toLocaleString() : '—'}
+              <p className="text-lg font-mono font-semibold leading-tight">
+                {stats.totalVolume > 0 ? formatSats(stats.totalVolume) : '—'}
               </p>
               {stats.totalVolume > 0 && <p className="text-[10px] text-ink/30 mt-0.5">sats</p>}
             </div>
@@ -188,17 +209,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
       )}
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-ink/70 uppercase tracking-wider">{t('detail.offers')}</h3>
-          {!isClosed && (
-            <button
-              onClick={() => setPlacing(true)}
-              className="text-sm font-medium bg-ink/10 border border-ink/15 rounded-lg px-4 py-2 hover:bg-ink/15 transition-colors"
-            >
-              {t('detail.place_bet')}
-            </button>
-          )}
-        </div>
+        <h3 className="text-sm font-semibold text-ink/70 uppercase tracking-wider">{t('detail.offers')}</h3>
 
         {/* Filters */}
         {offers.length > 0 && (
@@ -274,12 +285,16 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
           <div className="border border-ink/8 rounded-xl p-12 text-center space-y-3">
             <p className="text-ink/25 text-sm">{t('detail.no_offers')}</p>
             {!isClosed && (
-              <button
-                onClick={() => setPlacing(true)}
-                className="text-sm font-medium bg-ink/8 border border-ink/12 rounded-lg px-5 py-2.5 hover:bg-ink/12 transition-colors text-ink/60"
-              >
-                {t('detail.be_first')}
-              </button>
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  onClick={() => setPlacing('YES')}
+                  className="px-5 py-2 rounded-lg text-sm font-semibold bg-positive/10 text-positive border border-positive/20 hover:bg-positive/20 transition-colors"
+                >YES</button>
+                <button
+                  onClick={() => setPlacing('NO')}
+                  className="px-5 py-2 rounded-lg text-sm font-semibold bg-negative/10 text-negative border border-negative/20 hover:bg-negative/20 transition-colors"
+                >NO</button>
+              </div>
             )}
           </div>
         ) : filteredOffers.length === 0 ? (
@@ -295,7 +310,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
         )}
       </div>
 
-      {placing && <PlaceBetForm market={market} onDone={() => setPlacing(false)} />}
+      {placing && <PlaceBetForm market={market} initialSide={placing} onDone={() => setPlacing(null)} />}
       {taking && <TakeOfferModal market={market} offer={taking} onDone={() => setTaking(null)} />}
     </div>
   )

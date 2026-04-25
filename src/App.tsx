@@ -26,17 +26,19 @@ function AppShell() {
   return (
     <div className="min-h-screen bg-base text-ink flex flex-col">
       <Navbar />
-          <Routes>
-            <Route path="/" element={<MarketsPage />} />
-            <Route path="/oracle" element={<OraclePage />} />
-            <Route path="/inbox" element={<Navigate to="/contracts" replace />} />
-            <Route path="/contracts" element={<InboxPage />} />
-            <Route path="/wallet" element={<WalletPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/user/:pubkey" element={<UserPage />} />
-            <Route path="/markets/:marketId" element={<MarketPage />} />
-          </Routes>
-        </div>
+      <div className="flex-1 flex flex-col pb-16 sm:pb-0">
+        <Routes>
+          <Route path="/" element={<MarketsPage />} />
+          <Route path="/oracle" element={<OraclePage />} />
+          <Route path="/inbox" element={<Navigate to="/contracts" replace />} />
+          <Route path="/contracts" element={<InboxPage />} />
+          <Route path="/wallet" element={<WalletPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/user/:pubkey" element={<UserPage />} />
+          <Route path="/markets/:marketId" element={<MarketPage />} />
+        </Routes>
+      </div>
+    </div>
   )
 }
 
