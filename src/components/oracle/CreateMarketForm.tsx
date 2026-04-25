@@ -187,7 +187,10 @@ export function CreateMarketForm() {
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <div className="space-y-1.5">
-        <label className="text-xs text-ink/50 uppercase tracking-wider">{t('create.question')}</label>
+        <div className="flex items-baseline justify-between">
+          <label className="text-xs text-ink/50 uppercase tracking-wider">{t('create.question')}</label>
+          <span className="text-[10px] text-ink/30">{t('create.question_hint')}</span>
+        </div>
         <input
           type="text"
           placeholder="Will BTC hit 100k before June 1 2026?"

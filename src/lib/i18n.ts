@@ -63,6 +63,7 @@ const en = {
 
   // ── create market form ────────────────────────────────────────────────────────
   'create.question': 'question',
+  'create.question_hint': 'must be answerable yes or no',
   'create.description': 'description',
   'create.optional': '(optional)',
   'create.image': 'image',
@@ -245,6 +246,7 @@ const es: Record<keyof typeof en, string> = {
 
   // ── create market form ────────────────────────────────────────────────────────
   'create.question': 'pregunta',
+  'create.question_hint': 'debe responderse con sí o no',
   'create.description': 'descripción',
   'create.optional': '(opcional)',
   'create.image': 'imagen',
