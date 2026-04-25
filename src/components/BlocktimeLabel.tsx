@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { projectedResolution } from '../lib/blocktime'
 
 /**
@@ -20,13 +20,10 @@ export function BlocktimeLabel({
   const info = projectedResolution(resolutionBlock, currentBlock)
   const [open, setOpen] = useState(false)
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
 
-  function handleMouseEnter() {
-    if (btnRef.current) {
-      const r = btnRef.current.getBoundingClientRect()
-      setPos({ top: r.top, left: r.left + r.width / 2 })
-    }
+  function handleMouseEnter(e: React.MouseEvent | React.FocusEvent) {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setPos({ top: r.top, left: r.left + r.width / 2 })
     setOpen(true)
   }
 
@@ -39,20 +36,20 @@ export function BlocktimeLabel({
           <span className="text-ink/25">·</span>
           <span className="text-ink/40">{info.absolute}</span>
 
-          <button
-            ref={btnRef}
-            type="button"
+          <span
+            role="img"
+            tabIndex={0}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={() => setOpen(false)}
             onFocus={handleMouseEnter}
             onBlur={() => setOpen(false)}
-            className="text-ink/25 hover:text-ink/50 transition-colors leading-none shrink-0"
+            className="text-ink/25 hover:text-ink/50 transition-colors leading-none shrink-0 cursor-default"
             aria-label="Estimate disclaimer"
           >
             <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor">
               <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 1 1 0 1.5A.75.75 0 0 1 8 4zm-.25 3h1.5v4.5h-1.5V7z"/>
             </svg>
-          </button>
+          </span>
 
           {open && pos && (
             <span

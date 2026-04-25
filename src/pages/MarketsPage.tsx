@@ -67,6 +67,12 @@ export default function MarketsPage() {
 
   return (
     <main className="flex-1 px-6 py-12 max-w-5xl mx-auto w-full">
+      <div className="mb-6 flex items-start gap-2.5 bg-caution/5 border border-caution/20 rounded-xl px-4 py-3.5">
+        <span className="text-caution mt-0.5 shrink-0 leading-none">⚠</span>
+        <p className="text-xs text-caution/80 leading-relaxed">
+          This app is experimental and under active development. Expect bugs, broken flows, and unfinished features. Don't stake more than you're comfortable losing.
+        </p>
+      </div>
       <div className="mb-10">
         <h1 className="text-2xl font-bold mb-2">{t('markets.title')}</h1>
         <p className="text-ink/40 text-sm">{t('markets.subtitle')}</p>

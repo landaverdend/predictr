@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext } from '../context/ElectrumContext'
-import { DEFAULT_RELAY, BITCOIN_NETWORK_NAME, NETWORK_STORAGE_KEY, VALID_NETWORKS, type NetworkName } from '../lib/config'
+import { DEFAULT_RELAYS, BITCOIN_NETWORK_NAME, NETWORK_STORAGE_KEY, VALID_NETWORKS, type NetworkName } from '../lib/config'
 import { db } from '../db'
 import {
   getNostr,
@@ -55,7 +55,7 @@ function RelayManager() {
   const isDirty = draft.join(',') !== relays.join(',')
 
   function handleResetToDefault() {
-    setDraft(prev => [...new Set([...prev, DEFAULT_RELAY])])
+    setDraft(prev => [...new Set([...prev, ...DEFAULT_RELAYS])])
   }
 
   async function handleImportFromExtension() {

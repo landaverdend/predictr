@@ -23,3 +23,9 @@ export const BITCOIN_NETWORK: Network =
 export const DEFAULT_ELECTRUM_URL = 'wss://bitcoin.grey.pw:50004'
 
 export const DEFAULT_RELAY = 'wss://relay.damus.io'
+
+export const DEFAULT_RELAYS = [
+  'wss://relay.damus.io',
+  'wss://nos.lol',
+  'wss://relay.primal.net',
+]
