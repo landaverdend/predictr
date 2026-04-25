@@ -34,13 +34,14 @@ export function buildContractOutputScripts(p: ContractParams, network: Network =
 }
 
 
-const FEE = 1000 // sats per party
+export const FEE_PER_PARTY = 1000 // sats per party — covers miner fee for each side's contribution
 
 export function buildFundingTx(
   contract: ContractParams,
   maker: { utxo: { txid: string; vout: number; amount: number; script: Uint8Array; pubkey: Uint8Array }; stake: number; changeAddress: string },
   taker: { input: { txid: string; vout: number; amount: number }; stake: number; changeAddress: string },
   network: Network = REGTEST,
+  feePerParty: number = FEE_PER_PARTY,
 ): Transaction {
   const tx = new Transaction({ allowUnknownOutputs: true })
 
@@ -48,7 +49,6 @@ export function buildFundingTx(
   // placeholder witnessUtxo — taker must replace script with their real scriptPubKey before signing.
   // the dummy script doesn't affect the maker's ANYONECANPAY signature since only the maker's
   // own input is committed to. the library requires witnessUtxo on all inputs before signing any.
-  // placeholder — taker replaces with their real scriptPubKey before signing.
   // ANYONECANPAY means the maker's sig doesn't commit to this; library just needs
   // witnessUtxo present on all inputs before it will sign any of them.
   const dummyScript = new Uint8Array([0x51, 0x20, ...TAPROOT_UNSPENDABLE_KEY])
@@ -59,10 +59,10 @@ export function buildFundingTx(
   tx.addOutput({ script: makerOutput.script, amount: BigInt(maker.stake) })
   tx.addOutput({ script: takerOutput.script, amount: BigInt(taker.stake) })
 
-  const makerChange = maker.utxo.amount - maker.stake - FEE
+  const makerChange = maker.utxo.amount - maker.stake - feePerParty
   if (makerChange > 0) tx.addOutputAddress(maker.changeAddress, BigInt(makerChange), network)
 
-  const takerChange = taker.input.amount - taker.stake - FEE
+  const takerChange = taker.input.amount - taker.stake - feePerParty
   if (takerChange > 0) tx.addOutputAddress(taker.changeAddress, BigInt(takerChange), network)
 
   return tx

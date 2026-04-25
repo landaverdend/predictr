@@ -78,8 +78,22 @@ export function getSessionKey(): CryptoKey | null { return _sessionKey }
 export function clearSessionKey(): void { _sessionKey = null }
 export function isWalletUnlocked(): boolean { return _sessionKey !== null }
 
-/** Decrypt a wallet key's privkey using the current session. Throws if locked. */
+/** Returns true if a privkey blob is stored as plain (unencrypted) hex. */
+export function isUnencryptedPrivkey(privkey: string): boolean {
+  return /^[0-9a-f]{64}$/i.test(privkey)
+}
+
+/** Decrypt a wallet key's privkey using the current session. Throws if locked.
+ *
+ * If the stored privkey is still plain hex (64 hex chars) — which happens when
+ * wallet keys are regenerated after a network switch before re-encryption runs —
+ * the raw key is returned directly. It is already unprotected at rest in that
+ * state, so returning it doesn't weaken security further.
+ */
 export async function getDecryptedPrivkey(walletKey: WalletKey): Promise<string> {
+  if (/^[0-9a-f]{64}$/i.test(walletKey.privkey)) {
+    return walletKey.privkey
+  }
   if (!_sessionKey) throw new Error('wallet locked — enter PIN first')
   return decryptPrivkey(walletKey.privkey, _sessionKey)
 }

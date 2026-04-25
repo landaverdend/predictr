@@ -146,6 +146,19 @@ export class ElectrumWS {
     return result.height
   }
 
+  /**
+   * Returns the estimated fee rate in sat/vbyte for confirmation within 2 blocks.
+   * `blockchain.estimatefee` returns BTC/kB; multiply by 1e5 to get sat/vbyte.
+   * Falls back to 1 sat/vbyte if the node can't estimate (e.g. on regtest).
+   */
+  async getFeeRate(): Promise<number> {
+    try {
+      const btcPerKb = await this.request<number>('blockchain.estimatefee', [2])
+      if (btcPerKb > 0) return Math.max(1, Math.ceil(btcPerKb * 1e5))
+    } catch { /* ignore */ }
+    return 1
+  }
+
   close() {
     this.ws?.close()
     this.ws = null

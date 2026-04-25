@@ -10,6 +10,8 @@ import { db } from '../db'
 import { hexToBytes } from './utils'
 import { getDecryptedPrivkey } from './pinCrypto'
 import { Market, Offer, takerStake } from './market'
+import type { ElectrumClient } from './electrumClient'
+import { fundingFeePerParty } from './feeEstimator'
 
 /**
  * Send a request to the market maker with change address, inputs to use for the psbt.  
@@ -102,12 +104,16 @@ export async function sendFundingPsbt(
   contract: Contract,
   taker: TakeRequest,
   maker: { funding: WalletUTXO; changeAddress: string },
+  electrum?: ElectrumClient,
 ): Promise<void> {
   const nostr = getNostr()
   if (!nostr?.nip44) throw new Error('nostr signer with NIP-44 required')
 
   const makerPubkey = await nostr.getPublicKey()
   const makerWalletPubkey = maker.funding.key.pubkey
+
+  const feeRate = electrum ? await electrum.getFeeRate() : 1
+  const feePerParty = fundingFeePerParty(feeRate)
 
   const tx = buildFundingTx(
     {
@@ -127,6 +133,8 @@ export async function sendFundingPsbt(
       stake: contract.takerStake,
       changeAddress: taker.change_address,
     },
+    undefined,
+    feePerParty,
   )
 
   const makerPrivkey = await getDecryptedPrivkey(maker.funding.key)

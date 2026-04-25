@@ -6,6 +6,7 @@ import { useWallet, type WalletUTXO } from '../../hooks/useWallet'
 import { ChangeAddressPicker } from '../inbox/ChangeAddressPicker'
 import { toast } from 'sonner'
 import { sendTakeRequest } from '../../lib/offerFlow'
+import { FEE_PER_PARTY } from '../../lib/contract'
 
 export function TakeOfferModal({ market, offer, onDone }: { market: Market; offer: Offer; onDone: () => void }) {
   const { publish } = useRelayContext()
@@ -16,7 +17,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'sending'>('idle')
 
   const impliedTakerStake = takerStake(offer)
-  const eligible = allUtxos().filter(w => w.utxo.value >= impliedTakerStake + 2000)
+  const eligible = allUtxos().filter(w => w.utxo.value >= impliedTakerStake + FEE_PER_PARTY)
   const selected: WalletUTXO | null = eligible.find(w => `${w.utxo.tx_hash}:${w.utxo.tx_pos}` === selectedId) ?? null
 
   async function handleSubmit(e: React.FormEvent) {
@@ -74,7 +75,7 @@ export function TakeOfferModal({ market, offer, onDone }: { market: Market; offe
             <p className="text-xs text-negative">no wallet keys — generate one in the wallet tab</p>
           )}
           {!loading && keys.length > 0 && eligible.length === 0 && (
-            <p className="text-xs text-negative">no UTXOs with enough balance — need at least {(impliedTakerStake + 2000).toLocaleString()} sats</p>
+            <p className="text-xs text-negative">no UTXOs with enough balance — need at least {(impliedTakerStake + FEE_PER_PARTY).toLocaleString()} sats</p>
           )}
           {eligible.map(w => {
             const id = `${w.utxo.tx_hash}:${w.utxo.tx_pos}`

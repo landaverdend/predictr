@@ -2,15 +2,13 @@ import { useState } from 'react'
 import { type Contract } from '../../db'
 import { Field } from './Field'
 import { useRelayContext } from '../../context/RelayContext'
+import { useElectrumContext } from '../../context/ElectrumContext'
 import { useWallet, type WalletUTXO } from '../../hooks/useWallet'
 import { ChangeAddressPicker } from './ChangeAddressPicker'
 import type { TakeRequest } from '../../lib/types'
 import { sendFundingPsbt } from '../../lib/offerFlow'
 import { UnlockModal } from '../UnlockModal'
-
-// ── shared primitives ─────────────────────────────────────────────────────────
-
-const FEE_BUFFER = 2000
+import { FEE_PER_PARTY } from '../../lib/contract'
 
 type ElectrumUTXO = { tx_hash: string; tx_pos: number; value: number; height: number }
 
@@ -28,7 +26,7 @@ function UtxoCard({ utxo, stake }: { utxo: ElectrumUTXO; stake: number }) {
       </div>
       <div className="flex justify-between">
         <span className="text-ink/40">change back</span>
-        <span className="font-mono text-ink/70">~{(utxo.value - stake - FEE_BUFFER).toLocaleString()} sats</span>
+        <span className="font-mono text-ink/70">~{(utxo.value - stake - FEE_PER_PARTY).toLocaleString()} sats</span>
       </div>
     </div>
   )
@@ -119,7 +117,7 @@ function FundStep({ contract, onCancel, onConfirm }: {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [changeAddress, setChangeAddress] = useState('')
 
-  const eligible = allUtxos().filter(w => w.utxo.value >= contract.makerStake + 2000)
+  const eligible = allUtxos().filter(w => w.utxo.value >= contract.makerStake + FEE_PER_PARTY)
   const selected = eligible.find(w => `${w.utxo.tx_hash}:${w.utxo.tx_pos}` === selectedId) ?? null
 
   const totalPot = contract.makerStake + contract.takerStake
@@ -137,7 +135,7 @@ function FundStep({ contract, onCancel, onConfirm }: {
           <p className="text-xs text-negative">no wallet keys — generate one in the wallet tab</p>
         )}
         {!loading && keys.length > 0 && eligible.length === 0 && (
-          <p className="text-xs text-negative">no UTXOs with enough balance — need at least {(contract.makerStake + 2000).toLocaleString()} sats</p>
+          <p className="text-xs text-negative">no UTXOs with enough balance — need at least {(contract.makerStake + FEE_PER_PARTY).toLocaleString()} sats</p>
         )}
         <div className="max-h-48 overflow-y-auto space-y-1.5 pr-1">
           {eligible.map(w => {
@@ -187,6 +185,7 @@ export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contr
   const [error, setError] = useState('')
   const [pendingFunding, setPendingFunding] = useState<{ funding: WalletUTXO; changeAddress: string } | null>(null)
   const { publish } = useRelayContext()
+  const { client } = useElectrumContext()
 
   const title = step === 'review' ? 'accept taker request' : 'your funding details'
 
@@ -194,7 +193,7 @@ export function AcceptTakerModal({ contract, taker, onClose }: { contract: Contr
     setSending(true)
     setError('')
     try {
-      await sendFundingPsbt(publish, contract, taker, { funding, changeAddress })
+      await sendFundingPsbt(publish, contract, taker, { funding, changeAddress }, client ?? undefined)
       onClose()
     } catch (e) {
       if (e instanceof Error && e.message.includes('wallet locked')) {

@@ -25,6 +25,7 @@ export interface ElectrumClient {
   connect(): Promise<void>
   close(): void
   getBlockHeight(): Promise<number>
+  getFeeRate(): Promise<number>
   getUTXOs(address: string): Promise<ElectrumUTXO[]>
   getBalance(address: string): Promise<{ confirmed: number; unconfirmed: number }>
   getTxHistory(address: string): Promise<TxHistoryItem[]>
@@ -45,6 +46,7 @@ export class ElectrumWSBackend implements ElectrumClient {
   connect() { return this.ws.connect() }
   close() { this.ws.close() }
   getBlockHeight() { return this.ws.getBlockHeight() }
+  getFeeRate() { return this.ws.getFeeRate() }
   getUTXOs(address: string) { return this.ws.getUTXOs(address) }
   getBalance(address: string) { return this.ws.getBalance(address) }
   getTxHistory(address: string) { return this.ws.getTxHistory(address) }
@@ -124,6 +126,17 @@ export class MempoolBackend implements ElectrumClient {
     const res = await fetch(`${this.base}/blocks/tip/height`)
     if (!res.ok) throw new Error(`mempool ${res.status}`)
     return parseInt(await res.text(), 10)
+  }
+
+  async getFeeRate(): Promise<number> {
+    try {
+      const res = await fetch(`${this.base}/v1/fees/recommended`)
+      if (res.ok) {
+        const data: { halfHourFee: number } = await res.json()
+        return Math.max(1, data.halfHourFee)
+      }
+    } catch { /* ignore */ }
+    return 1
   }
 
   async getUTXOs(address: string): Promise<ElectrumUTXO[]> {

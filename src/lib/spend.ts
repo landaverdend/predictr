@@ -1,11 +1,12 @@
 import { Transaction, Address, OutScript, TaprootControlBlock } from '@scure/btc-signer'
 import type { Contract } from '../db'
 import { db } from '../db'
-import { buildContractOutputScripts, REGTEST } from './contract'
+import { buildContractOutputScripts, REGTEST, FEE_PER_PARTY } from './contract'
 import type { ElectrumClient as ElectrumWS } from './electrumClient'
 import { hexToBytes, equalBytes, REFUND_DELAY } from './utils'
 import type { WalletUTXO } from '../hooks/useWallet'
 import { getDecryptedPrivkey } from './pinCrypto'
+import { refundFee, claimFee, sendFee } from './feeEstimator'
 
 // Leaf order after taprootWalkTree on [yesLeaf, noLeaf, cltvLeaf]: [no=0, cltv=1, yes=2]
 const YES_LEAF_IDX = 2
@@ -62,7 +63,7 @@ export function validateFundingPsbt(tx: Transaction, contract: Contract): void {
     .slice(2)
     .reduce((sum, o) => sum + (o.amount ?? 0n), 0n)
   const takerSpend = takerUtxoAmount - takerChange
-  const maxAllowed = BigInt(contract.takerStake) + 2000n // stake + max fee
+  const maxAllowed = BigInt(contract.takerStake) + BigInt(FEE_PER_PARTY) // stake + max fee
   if (takerSpend > maxAllowed)
     throw new Error(`taker would spend ${takerSpend} sats but agreed to stake ${contract.takerStake} + fee`)
 }
@@ -128,6 +129,9 @@ export async function refundFunding(contract: Contract, electrum: ElectrumWS): P
   const outputIdx = isMaker ? 0 : 1
   const locktime = contract.resolutionBlockheight + REFUND_DELAY
 
+  const feeRate = await electrum.getFeeRate()
+  const fee = refundFee(feeRate)
+
   const tx = new Transaction({ allowUnknownOutputs: true, allowUnknownInputs: true, lockTime: locktime })
   tx.addInput({
     txid: contract.fundingTxid,
@@ -136,7 +140,7 @@ export async function refundFunding(contract: Contract, electrum: ElectrumWS): P
     tapLeafScript: [output.tapLeafScript![CLTV_LEAF_IDX]],
     sequence: 0xFFFFFFFE,
   })
-  tx.addOutputAddress(walletKey.address, BigInt(stake - 1000), REGTEST)
+  tx.addOutputAddress(walletKey.address, BigInt(stake - fee), REGTEST)
 
   const refundPrivkey = await getDecryptedPrivkey(walletKey)
   tx.signIdx(hexToBytes(refundPrivkey), 0)
@@ -179,6 +183,9 @@ export async function claimFunding(
     resolutionBlockheight: contract.resolutionBlockheight,
   })
 
+  const feeRate = await electrum.getFeeRate()
+  const fee = claimFee(feeRate)
+
   const leafIdx = isMakerWinner ? YES_LEAF_IDX : NO_LEAF_IDX
   const preimageBytes = hexToBytes(contract.winningPreimage)
   const privkeyBytes = hexToBytes(await getDecryptedPrivkey(walletKey))
@@ -200,7 +207,7 @@ export async function claimFunding(
     tapLeafScript: [takerOutput.tapLeafScript![leafIdx]],
   })
 
-  tx.addOutputAddress(payoutAddress, BigInt(totalAmount - 2000), REGTEST)
+  tx.addOutputAddress(payoutAddress, BigInt(totalAmount - fee), REGTEST)
 
   tx.signIdx(privkeyBytes, 0)
   tx.signIdx(privkeyBytes, 1)
@@ -226,16 +233,10 @@ export async function claimFunding(
 
 // ── send sats from wallet to an external address ─────────────────────────────
 
-const FEE_PER_INPUT = 200   // ~sats per p2tr input at 1 sat/vbyte on regtest
-const BASE_FEE = 500        // base overhead for outputs + tx header
-
-function estimateFee(numInputs: number): number {
-  return BASE_FEE + FEE_PER_INPUT * numInputs
-}
-
 function selectCoins(
   utxos: WalletUTXO[],
   target: number,
+  feeRate: number,
 ): { selected: WalletUTXO[]; fee: number; change: number } | null {
   // sort smallest first (minimize waste)
   const sorted = [...utxos].sort((a, b) => a.utxo.value - b.utxo.value)
@@ -245,7 +246,7 @@ function selectCoins(
   for (const u of sorted) {
     selected.push(u)
     sum += u.utxo.value
-    const fee = estimateFee(selected.length)
+    const fee = sendFee(selected.length, feeRate)
     if (sum >= target + fee) {
       return { selected, fee, change: sum - target - fee }
     }
@@ -262,7 +263,8 @@ export async function sendFromWallet(
 ): Promise<string> {
   if (amountSats <= 0) throw new Error('amount must be positive')
 
-  const result = selectCoins(utxos, amountSats)
+  const feeRate = await electrum.getFeeRate()
+  const result = selectCoins(utxos, amountSats, feeRate)
   if (!result) throw new Error('insufficient funds')
 
   const { selected, fee, change } = result
@@ -286,6 +288,43 @@ export async function sendFromWallet(
 
   for (let i = 0; i < selected.length; i++) {
     const privkey = await getDecryptedPrivkey(selected[i].key)
+    tx.signIdx(hexToBytes(privkey), i)
+  }
+
+  tx.finalize()
+  return electrum.broadcastTx(tx.hex)
+}
+
+// ── consolidate selected UTXOs into a single output ───────────────────────────
+
+export async function consolidateUtxos(
+  utxos: WalletUTXO[],
+  toAddress: string,
+  electrum: ElectrumWS,
+): Promise<string> {
+  if (utxos.length === 0) throw new Error('no UTXOs selected')
+
+  const feeRate = await electrum.getFeeRate()
+  const fee = sendFee(utxos.length, feeRate)
+  const total = utxos.reduce((s, u) => s + u.utxo.value, 0)
+  const netAmount = total - fee
+  if (netAmount <= 546) throw new Error(`not enough to cover fee (${fee} sats)`)
+
+  const tx = new Transaction({ allowUnknownOutputs: true })
+
+  for (const { utxo, key, script } of utxos) {
+    tx.addInput({
+      txid: utxo.tx_hash,
+      index: utxo.tx_pos,
+      witnessUtxo: { script, amount: BigInt(utxo.value) },
+      tapInternalKey: hexToBytes(key.pubkey),
+    })
+  }
+
+  tx.addOutputAddress(toAddress, BigInt(netAmount), REGTEST)
+
+  for (let i = 0; i < utxos.length; i++) {
+    const privkey = await getDecryptedPrivkey(utxos[i].key)
     tx.signIdx(hexToBytes(privkey), i)
   }
 

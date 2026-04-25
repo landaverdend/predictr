@@ -7,16 +7,31 @@ import { useElectrum } from '../hooks/useElectrum'
 import { useWallet } from '../hooks/useWallet'
 import { useTransactionHistory } from '../hooks/useTransactionHistory'
 import { sendFromWallet } from '../lib/spend'
-import { encryptPrivkey, getSessionKey, isWalletUnlocked } from '../lib/pinCrypto'
+import { encryptPrivkey, getSessionKey, isWalletUnlocked, isUnencryptedPrivkey } from '../lib/pinCrypto'
 import { generateMnemonic, isValidMnemonic } from '../lib/hdwallet'
 import { SetPinScreen, UnlockScreen } from '../components/wallet/PinScreens'
 import { SeedPhrase } from '../components/wallet/SeedPhrase'
 import { ImportModal } from '../components/wallet/ImportModal'
 import { SendModal } from '../components/wallet/SendModal'
 import { AddressTable } from '../components/wallet/AddressTable'
+import { UtxoTab } from '../components/wallet/UtxoTab'
 import { TxHistory } from '../components/wallet/TxHistory'
 
 // ── DB helpers ────────────────────────────────────────────────────────────────
+
+/** Re-encrypt any plain-hex private keys using the active session key.
+ *  This heals keys created after a network-switch (which clears db.wallet). */
+async function reencryptPlainKeys(): Promise<void> {
+  const sessionKey = getSessionKey()
+  if (!sessionKey) return
+  const allKeys = await db.wallet.toArray()
+  const plain = allKeys.filter(k => isUnencryptedPrivkey(k.privkey))
+  if (plain.length === 0) return
+  const encrypted = await Promise.all(
+    plain.map(async k => ({ ...k, privkey: await encryptPrivkey(k.privkey, sessionKey) }))
+  )
+  await db.wallet.bulkPut(encrypted)
+}
 
 async function getOrCreateMnemonic(): Promise<string> {
   const existing = await db.settings.get('wallet_mnemonic')
@@ -44,7 +59,7 @@ export default function WalletPage() {
   const [showImport, setShowImport] = useState(false)
   const [showSend, setShowSend] = useState(false)
   const [generatingMore, setGeneratingMore] = useState(false)
-  const [walletTab, setWalletTab] = useState<'addresses' | 'history'>('addresses')
+  const [walletTab, setWalletTab] = useState<'addresses' | 'utxos' | 'history'>('addresses')
 
   const keys = useLiveQuery(
     () => db.wallet.toArray().then(ks => ks.sort((a, b) => Number(a.id) - Number(b.id))),
@@ -62,7 +77,10 @@ export default function WalletPage() {
       setMnemonic(m)
       const saltSetting = await db.settings.get('wallet_pin_salt')
       if (!saltSetting) setPinState('setup')
-      else if (isWalletUnlocked()) setPinState('unlocked')
+      else if (isWalletUnlocked()) {
+        await reencryptPlainKeys()
+        setPinState('unlocked')
+      }
       else setPinState('locked')
     }
     check()
@@ -124,7 +142,7 @@ export default function WalletPage() {
     </main>
   )
   if (pinState === 'setup') return <SetPinScreen onDone={() => setPinState('unlocked')} />
-  if (pinState === 'locked') return <UnlockScreen onDone={() => setPinState('unlocked')} />
+  if (pinState === 'locked') return <UnlockScreen onDone={() => { reencryptPlainKeys(); setPinState('unlocked') }} />
 
   // ── Unlocked ───────────────────────────────────────────────────────────────
 
@@ -180,7 +198,7 @@ export default function WalletPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 border-b border-ink/10">
-        {(['addresses', 'history'] as const).map(tab => (
+        {(['addresses', 'utxos', 'history'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setWalletTab(tab)}
@@ -191,7 +209,7 @@ export default function WalletPage() {
         ))}
       </div>
 
-      {walletTab === 'addresses' ? (
+      {walletTab === 'addresses' && (
         <>
           {keys && keys.length > 0
             ? <AddressTable keys={keys} utxosByAddress={utxosByAddress} hasData={hasData} loading={loading} />
@@ -220,7 +238,18 @@ export default function WalletPage() {
             </button>
           </div>
         </>
-      ) : (
+      )}
+
+      {walletTab === 'utxos' && (
+        <UtxoTab
+          utxos={allUtxos()}
+          loading={loading}
+          electrum={client}
+          onConsolidated={refresh}
+        />
+      )}
+
+      {walletTab === 'history' && (
         <TxHistory history={history} fetching={histFetching} error={histError} />
       )}
 
