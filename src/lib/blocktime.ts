@@ -1,4 +1,4 @@
-const BLOCK_SECONDS = 10 * 60 // ~10 min per block
+export const BLOCK_SECONDS = 10 * 60 // ~10 min per block
 
 export function estimatedResolutionDate(
   resolutionBlock: number,
@@ -39,6 +39,18 @@ export interface BlocktimeInfo {
   relative: string   // "~6 hrs"
   absolute: string   // "Apr 3 at 2:30 PM"
   date: Date
+}
+
+/** Convert a target Date to the nearest block number */
+export function dateToBlock(date: Date, currentBlock: number): number {
+  const ms = date.getTime() - Date.now()
+  return Math.max(currentBlock + 1, Math.round(currentBlock + ms / (BLOCK_SECONDS * 1000)))
+}
+
+/** Format a Date as a datetime-local input value string */
+export function toDatetimeLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 /**

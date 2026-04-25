@@ -120,7 +120,7 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
       </button>
 
       <div className="border border-ink/10 rounded-xl overflow-hidden">
-        <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} />
+        <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} height="h-64" expandable />
         <div className="p-6 space-y-6">
           <div>
             <h2 className="text-xl font-semibold leading-snug">{market.question}</h2>

@@ -6,6 +6,7 @@ import { db } from '../../db'
 import { KIND_MARKET_ANNOUNCEMENT } from '../../lib/kinds'
 import { getNostr } from '../../lib/signer'
 import { BlocktimeLabel } from '../BlocktimeLabel'
+import { dateToBlock, estimatedResolutionDate, toDatetimeLocal } from '../../lib/blocktime'
 
 function randomHex(bytes: number): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
@@ -26,6 +27,8 @@ export function CreateMarketForm() {
   const [question, setQuestion] = useState('')
   const [description, setDescription] = useState('')
   const [resolutionBlockheight, setResolutionBlockheight] = useState('')
+  const [resMode, setResMode] = useState<'block' | 'date'>('block')
+  const [dateInput, setDateInput] = useState('')
   const [imageUri, setImageUri] = useState('')
   const [imageUploading, setImageUploading] = useState(false)
   const [imageError, setImageError] = useState('')
@@ -77,6 +80,26 @@ export function CreateMarketForm() {
       setImageError(err instanceof Error ? err.message : 'upload failed')
     } finally {
       setImageUploading(false)
+    }
+  }
+
+  function handleDateChange(dateStr: string) {
+    setDateInput(dateStr)
+    if (dateStr && blockHeight !== null) {
+      const block = dateToBlock(new Date(dateStr), blockHeight)
+      setResolutionBlockheight(String(block))
+    }
+  }
+
+  function switchMode(mode: 'block' | 'date') {
+    if (mode === resMode) return
+    setResMode(mode)
+    if (mode === 'date' && blockHeight !== null) {
+      // Pre-fill date from existing block value if set
+      const block = parseInt(resolutionBlockheight)
+      if (!isNaN(block)) {
+        setDateInput(toDatetimeLocal(estimatedResolutionDate(block, blockHeight)))
+      }
     }
   }
 
@@ -152,7 +175,7 @@ export function CreateMarketForm() {
         <p className="text-positive font-medium">{t('create.published_title')}</p>
         <p className="text-xs text-ink/40">{t('create.published_body')}</p>
         <button
-          onClick={() => { setStatus('idle'); setQuestion(''); setDescription(''); setResolutionBlockheight(''); setImageUri('') }}
+          onClick={() => { setStatus('idle'); setQuestion(''); setDescription(''); setResolutionBlockheight(''); setDateInput(''); setResMode('block'); setImageUri('') }}
           className="mt-4 text-xs text-ink/40 hover:text-ink/70 underline"
         >
           {t('create.create_another')}
@@ -192,25 +215,43 @@ export function CreateMarketForm() {
           {t('create.image')} <span className="normal-case text-ink/30">{t('create.optional')}</span>
         </label>
         {imageUri ? (
-          <div className="relative">
+          <div className="relative group">
             <img
               src={imageUri}
               alt="preview"
-              className="w-full h-36 object-cover rounded-lg border border-ink/10"
+              className="w-full h-52 object-cover rounded-xl border border-ink/10"
             />
             <button
               type="button"
               onClick={() => setImageUri('')}
-              className="absolute top-2 right-2 text-xs bg-base/80 border border-ink/20 rounded px-2 py-1 text-ink/60 hover:text-ink transition-colors"
+              className="absolute top-3 right-3 text-xs bg-base/90 border border-ink/20 rounded-lg px-3 py-1.5 text-ink/60 hover:text-ink hover:border-ink/40 transition-colors backdrop-blur-sm"
             >
               {t('create.remove')}
             </button>
           </div>
         ) : (
-          <label className={`flex flex-col items-center justify-center w-full h-24 border border-dashed border-ink/20 rounded-lg cursor-pointer hover:border-ink/40 transition-colors ${imageUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-            <span className="text-xs text-ink/30">
-              {imageUploading ? t('create.uploading') : t('create.upload_prompt')}
-            </span>
+          <label className={`relative flex flex-col items-center justify-center w-full h-44 border-2 border-dashed border-ink/20 rounded-xl cursor-pointer bg-ink/[0.02] hover:bg-ink/[0.04] hover:border-ink/35 transition-all group ${imageUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+            {imageUploading ? (
+              <div className="flex flex-col items-center gap-2">
+                <svg className="w-6 h-6 text-ink/30 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+                </svg>
+                <span className="text-xs text-ink/40">uploading…</span>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full bg-ink/5 group-hover:bg-ink/10 flex items-center justify-center transition-colors">
+                  <svg className="w-5 h-5 text-ink/35 group-hover:text-ink/55 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+                  </svg>
+                </div>
+                <div className="text-center">
+                  <p className="text-sm text-ink/50 group-hover:text-ink/70 transition-colors">{t('create.upload_prompt')}</p>
+                  <p className="text-xs text-ink/25 mt-0.5">PNG, JPG, GIF up to 10 MB</p>
+                </div>
+              </div>
+            )}
             <input
               type="file"
               accept="image/*"
@@ -222,25 +263,63 @@ export function CreateMarketForm() {
         {imageError && <p className="text-xs text-negative">{imageError}</p>}
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-xs text-ink/50 uppercase tracking-wider">{t('create.blockheight')}</label>
-        <input
-          type="text"
-          inputMode="numeric"
-          placeholder="895000"
-          value={resolutionBlockheight}
-          onChange={e => {
-            const digits = e.target.value.replace(/\D/g, '')
-            setResolutionBlockheight(digits)
-          }}
-          className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors font-mono"
-        />
-        {resolutionBlockheight && blockHeight !== null && (
-          <BlocktimeLabel
-            resolutionBlock={parseInt(resolutionBlockheight)}
-            currentBlock={blockHeight}
-            className="text-xs text-ink/40 flex-wrap"
-          />
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <label className="text-xs text-ink/50 uppercase tracking-wider">{t('create.blockheight')}</label>
+          {/* Mode toggle */}
+          <div className="flex rounded-lg border border-ink/10 overflow-hidden text-[11px]">
+            <button
+              type="button"
+              onClick={() => switchMode('date')}
+              className={`px-3 py-1 transition-colors ${resMode === 'date' ? 'bg-ink/10 text-ink/80' : 'text-ink/35 hover:text-ink/60'}`}
+            >
+              date &amp; time
+            </button>
+            <button
+              type="button"
+              onClick={() => switchMode('block')}
+              className={`px-3 py-1 transition-colors ${resMode === 'block' ? 'bg-ink/10 text-ink/80' : 'text-ink/35 hover:text-ink/60'}`}
+            >
+              block height
+            </button>
+          </div>
+        </div>
+
+        {resMode === 'date' ? (
+          <>
+            <input
+              type="datetime-local"
+              value={dateInput}
+              min={toDatetimeLocal(new Date())}
+              onChange={e => handleDateChange(e.target.value)}
+              className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm text-ink/90 placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors [color-scheme:dark]"
+            />
+            {resolutionBlockheight && blockHeight !== null && (
+              <BlocktimeLabel
+                resolutionBlock={parseInt(resolutionBlockheight)}
+                currentBlock={blockHeight}
+                className="text-xs text-ink/40 flex-wrap"
+              />
+            )}
+          </>
+        ) : (
+          <>
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="895000"
+              value={resolutionBlockheight}
+              onChange={e => setResolutionBlockheight(e.target.value.replace(/\D/g, ''))}
+              className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors font-mono"
+            />
+            {resolutionBlockheight && blockHeight !== null && (
+              <BlocktimeLabel
+                resolutionBlock={parseInt(resolutionBlockheight)}
+                currentBlock={blockHeight}
+                className="text-xs text-ink/40 flex-wrap"
+              />
+            )}
+          </>
         )}
         <p className="text-xs text-ink/30">{t('create.blockheight_help')}</p>
       </div>
