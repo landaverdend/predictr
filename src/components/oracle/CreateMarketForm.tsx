@@ -299,6 +299,7 @@ export function CreateMarketForm() {
                 resolutionBlock={parseInt(resolutionBlockheight)}
                 currentBlock={blockHeight}
                 className="text-xs text-ink/40 flex-wrap"
+                relativeLabel="will resolve"
               />
             )}
           </>
@@ -317,6 +318,7 @@ export function CreateMarketForm() {
                 resolutionBlock={parseInt(resolutionBlockheight)}
                 currentBlock={blockHeight}
                 className="text-xs text-ink/40 flex-wrap"
+                relativeLabel="will resolve"
               />
             )}
           </>

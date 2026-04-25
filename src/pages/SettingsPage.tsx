@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { nip19 } from 'nostr-tools'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext } from '../context/ElectrumContext'
@@ -531,7 +532,7 @@ export default function SettingsPage() {
                 {user.profile?.about && (
                   <p className="text-xs text-ink/50 mt-0.5 line-clamp-2">{user.profile.about}</p>
                 )}
-                <p className="text-[10px] font-mono text-ink/30 mt-1 break-all">{user.pubkey}</p>
+                <p className="text-[10px] font-mono text-ink/30 mt-1 break-all">{nip19.npubEncode(user.pubkey)}</p>
               </div>
             </div>
           ) : (

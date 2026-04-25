@@ -12,10 +12,13 @@ export function BlocktimeLabel({
   resolutionBlock,
   currentBlock,
   className = '',
+  relativeLabel,
 }: {
   resolutionBlock: number
   currentBlock: number | null
   className?: string
+  /** Override the relative time label (e.g. "will resolve" instead of "resolved") */
+  relativeLabel?: string
 }) {
   const info = projectedResolution(resolutionBlock, currentBlock)
   const [open, setOpen] = useState(false)
@@ -32,7 +35,7 @@ export function BlocktimeLabel({
       <span className="font-mono">block {resolutionBlock.toLocaleString()}</span>
       {info && (
         <span className="flex items-center gap-1 flex-wrap">
-          <span>{info.relative}</span>
+          <span>{relativeLabel ?? info.relative}</span>
           <span className="text-ink/25">·</span>
           <span className="text-ink/40">{info.absolute}</span>
 

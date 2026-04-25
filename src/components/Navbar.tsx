@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { nip19 } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useNavBadges } from '../hooks/useNavBadges'
@@ -73,7 +74,7 @@ function UserMenu() {
               <p className="text-sm font-medium truncate">{user.profile.name}</p>
             )}
             <p className="text-[10px] font-mono text-ink/40 truncate mt-0.5">
-              {user?.pubkey ?? 'no extension found'}
+              {user?.pubkey ? nip19.npubEncode(user.pubkey) : 'no extension found'}
             </p>
           </div>
 
