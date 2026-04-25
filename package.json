@@ -6,12 +6,14 @@
   "scripts": {
     "dev": "vite --mode regtest",
     "dev:testnet": "vite --mode testnet",
+    "dev:signet": "vite --mode signet",
     "dev:mainnet": "vite --mode mainnet",
     "build": "tsc && vite build --mode regtest",
     "build:testnet": "tsc && vite build --mode testnet",
     "build:mainnet": "tsc && vite build --mode mainnet",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "find-electrum-ws": "node scripts/find-electrum-ws.mjs"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",

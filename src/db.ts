@@ -114,8 +114,8 @@ class NostrDlcDb extends Dexie {
   oracleMarkets!: Table<OracleMarket>
   settings!: Table<Setting>
 
-  constructor() {
-    super('nostr_dlc')
+  constructor(network: string) {
+    super(`nostr_dlc_${network}`)
     this.version(1).stores({
       contracts: 'id, role, status, marketId, createdAt, updatedAt',
       messages: 'id, contractId, createdAt',
@@ -127,4 +127,5 @@ class NostrDlcDb extends Dexie {
   }
 }
 
-export const db = new NostrDlcDb()
+const network = import.meta.env.VITE_BITCOIN_NETWORK ?? 'regtest'
+export const db = new NostrDlcDb(network)

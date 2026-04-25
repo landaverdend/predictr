@@ -16,7 +16,7 @@ function convertBits(data: number[], from: number, to: number, pad: boolean): Ui
   return new Uint8Array(result)
 }
 
-async function addressToScripthash(address: string): Promise<string> {
+export async function addressToScripthash(address: string): Promise<string> {
   const lower = address.toLowerCase()
   const sep = lower.lastIndexOf('1')
   if (sep < 1) throw new Error('invalid bech32 address')
@@ -56,6 +56,8 @@ export class ElectrumWS {
   private ws: WebSocket | null = null
   private pending = new Map<number, Pending>()
   private notifications = new Map<string, NotificationHandler>()
+  // per-scripthash change callbacks (keyed by scripthash hex)
+  private scripthashHandlers = new Map<string, () => void>()
   private id = 1
 
   constructor(private url: string) { }
@@ -77,6 +79,11 @@ export class ElectrumWS {
             const msg = JSON.parse(line)
             // Push notification (no id, has method)
             if (msg.method && msg.id === undefined) {
+              // Route per-scripthash notifications
+              if (msg.method === 'blockchain.scripthash.subscribe' && Array.isArray(msg.params)) {
+                const [sh] = msg.params
+                this.scripthashHandlers.get(sh)?.()
+              }
               this.notifications.get(msg.method)?.(msg.params)
               return
             }
@@ -91,8 +98,15 @@ export class ElectrumWS {
       this.ws.onclose = () => {
         for (const p of this.pending.values()) p.reject(new Error('connection closed'))
         this.pending.clear()
+        this.scripthashHandlers.clear()
       }
     })
+  }
+
+  /** Subscribe to status changes for a scripthash. Returns the initial status hash (or null). */
+  async subscribeScripthash(scripthash: string, onChange: () => void): Promise<string | null> {
+    this.scripthashHandlers.set(scripthash, onChange)
+    return this.request<string | null>('blockchain.scripthash.subscribe', [scripthash])
   }
 
   private request<T>(method: string, params: unknown[]): Promise<T> {

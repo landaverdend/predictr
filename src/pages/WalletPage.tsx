@@ -502,11 +502,18 @@ function CopyButton({ text, className = '' }: { text: string; className?: string
   )
 }
 
-function KeyRow({ walletKey, balance }: { walletKey: WalletKey; balance: number | undefined }) {
-  const balanceEl = balance === undefined ? (
+function KeyRow({ walletKey, utxos }: { walletKey: WalletKey; utxos: import('../lib/electrum').ElectrumUTXO[] | undefined }) {
+  const confirmed = (utxos ?? []).filter(u => u.height > 0).reduce((s, u) => s + u.value, 0)
+  const pending = (utxos ?? []).filter(u => u.height === 0).reduce((s, u) => s + u.value, 0)
+  const loading = utxos === undefined
+
+  const balanceEl = loading ? (
     <span className="text-ink/20">…</span>
-  ) : balance > 0 ? (
-    <span className="text-positive">{balance.toLocaleString()} sats</span>
+  ) : confirmed > 0 || pending > 0 ? (
+    <span className="flex flex-col items-end gap-0.5">
+      {confirmed > 0 && <span className="text-positive">{confirmed.toLocaleString()} sats</span>}
+      {pending > 0 && <span className="text-amber-400/80 text-[10px] font-mono">+{pending.toLocaleString()} pending</span>}
+    </span>
   ) : (
     <span className="text-ink/20">—</span>
   )
@@ -550,12 +557,9 @@ export default function WalletPage() {
     [],
   );
   const { client } = useElectrum();
-  const { allUtxos, totalBalance, utxosByAddress, loading, refresh } = useWallet();
+  const { allUtxos, confirmedBalance, pendingBalance, totalBalance, utxosByAddress, loading, fetchError, refresh } = useWallet();
 
-  const balances: Record<string, number> = {};
-  for (const [addr, utxos] of Object.entries(utxosByAddress)) {
-    balances[addr] = utxos.reduce((s, u) => s + u.value, 0);
-  }
+  const hasData = Object.keys(utxosByAddress).length > 0
 
   // Check PIN state on mount
   useEffect(() => {
@@ -668,10 +672,13 @@ export default function WalletPage() {
         <div className="text-right shrink-0 space-y-1.5">
           <p className="text-[10px] text-ink/30 uppercase tracking-wider">total balance</p>
           <p className="text-xl sm:text-2xl font-mono font-semibold text-positive leading-none">
-            {totalBalance > 0 ? totalBalance.toLocaleString() : '—'}
+            {confirmedBalance > 0 ? confirmedBalance.toLocaleString() : '—'}
           </p>
-          {totalBalance > 0 && <p className="text-xs text-positive/60">sats</p>}
-          {totalBalance > 0 && (
+          {confirmedBalance > 0 && <p className="text-xs text-positive/60">sats confirmed</p>}
+          {pendingBalance > 0 && (
+            <p className="text-xs font-mono text-amber-400/80">+{pendingBalance.toLocaleString()} pending</p>
+          )}
+          {confirmedBalance > 0 && (
             <button
               onClick={() => setShowSend(true)}
               className="text-xs px-4 py-2 rounded-lg bg-brand text-white hover:bg-brand-light transition-all"
@@ -697,7 +704,7 @@ export default function WalletPage() {
             </thead>
             <tbody>
               {keys.map((k) => (
-                <KeyRow key={k.id} walletKey={k} balance={balances[k.address]} />
+                <KeyRow key={k.id} walletKey={k} utxos={hasData ? (utxosByAddress[k.address] ?? []) : undefined} />
               ))}
             </tbody>
           </table>
@@ -708,9 +715,15 @@ export default function WalletPage() {
 
       {mnemonic && <SeedPhrase mnemonic={mnemonic} />}
 
+      {fetchError && (
+        <p className="text-xs text-negative bg-negative/5 border border-negative/20 rounded-lg px-4 py-3">
+          balance fetch failed: {fetchError}
+        </p>
+      )}
+
       <div className="flex items-center gap-3">
-        <p className="text-xs text-negative/50 flex-1">
-          private keys encrypted at rest with AES-256-GCM · seed phrase unencrypted · regtest only
+        <p className="text-xs text-ink/25 flex-1">
+          private keys encrypted at rest with AES-256-GCM · seed phrase unencrypted
         </p>
         <button
           onClick={handleGenerateMore}
@@ -730,7 +743,7 @@ export default function WalletPage() {
       {showImport && <ImportModal onImport={handleImport} onClose={() => setShowImport(false)} />}
       {showSend && (
         <SendModal
-          totalBalance={totalBalance}
+          totalBalance={confirmedBalance}
           onSend={handleSend}
           onClose={() => setShowSend(false)}
         />

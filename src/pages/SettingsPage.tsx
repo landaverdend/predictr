@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext, DEFAULT_ELECTRUM_URL } from '../context/ElectrumContext'
-import { DEFAULT_RELAY } from '../lib/config'
+import { DEFAULT_RELAY, BITCOIN_NETWORK_NAME } from '../lib/config'
 import { db } from '../db'
 import {
   getNostr,
@@ -291,25 +291,56 @@ function BunkerManager() {
   )
 }
 
+const MEMPOOL_URLS: Record<string, string> = {
+  mainnet: 'https://mempool.space/api',
+  testnet: 'https://mempool.space/testnet4/api',
+  signet:  'https://mempool.space/signet/api',
+  regtest: '',
+}
+
+const ELECTRUM_WS_DEFAULTS: Record<string, string> = {
+  regtest: 'ws://nigiri.kratom.io:5050/electrum',
+  testnet: 'wss://blackie.c3-soft.com:50004',
+  signet:  '',   // no public signet Electrum WS — user must supply their own
+  mainnet: 'wss://electrum.blockstream.info:50004',
+}
+
 function ElectrumManager() {
   const { url, saveUrl, error } = useElectrumContext()
   const [draft, setDraft] = useState(url)
   const [saving, setSaving] = useState(false)
   const [pingStatus, setPingStatus] = useState<PingStatus | null>(null)
 
+  const isWS = draft.startsWith('ws')
+
   useEffect(() => { setDraft(url) }, [url])
 
   useEffect(() => {
-    if (!draft.startsWith('ws')) { setPingStatus(null); return }
+    if (!isWS) { setPingStatus(null); return }
     setPingStatus('checking')
     pingRelay(draft).then(ok => setPingStatus(ok ? 'ok' : 'fail'))
-  }, [draft])
+  }, [draft, isWS])
 
   const isDirty = draft !== url
+  const mempoolDefault = MEMPOOL_URLS[BITCOIN_NETWORK_NAME] ?? ''
 
-  async function handleSave() {
+  async function handleSave(override?: string) {
+    const val = override ?? draft
     setSaving(true)
-    try { await saveUrl(draft) } finally { setSaving(false) }
+    try { await saveUrl(val) } finally { setSaving(false) }
+  }
+
+  function switchToMempool() {
+    if (!mempoolDefault) return
+    setDraft(mempoolDefault)
+    handleSave(mempoolDefault)
+  }
+
+  const wsDefault = ELECTRUM_WS_DEFAULTS[BITCOIN_NETWORK_NAME] ?? ''
+
+  function switchToElectrum() {
+    setDraft(wsDefault)
+    if (wsDefault) handleSave(wsDefault)
   }
 
   const PING_DOT: Record<PingStatus, string> = {
@@ -318,8 +349,28 @@ function ElectrumManager() {
     fail:     'bg-negative',
   }
 
+  const activeBackend = isWS ? 'electrum' : 'mempool'
+
   return (
     <div className="p-5 space-y-4">
+      {/* Backend toggle */}
+      <div className="flex rounded-lg border border-ink/10 overflow-hidden text-xs w-fit">
+        <button
+          onClick={switchToElectrum}
+          className={`px-4 py-2 transition-colors ${activeBackend === 'electrum' ? 'bg-ink/10 text-ink/80' : 'text-ink/35 hover:text-ink/60'}`}
+        >
+          Electrum WS
+        </button>
+        <button
+          onClick={switchToMempool}
+          disabled={!mempoolDefault}
+          className={`px-4 py-2 transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${activeBackend === 'mempool' ? 'bg-ink/10 text-ink/80' : 'text-ink/35 hover:text-ink/60'}`}
+        >
+          mempool.space
+        </button>
+      </div>
+
+      {/* URL input */}
       <div className="flex items-center gap-2 bg-elevated rounded-lg px-3 py-2">
         {pingStatus && (
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${PING_DOT[pingStatus]}`} />
@@ -329,16 +380,16 @@ function ElectrumManager() {
           value={draft}
           onChange={e => setDraft(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && isDirty && handleSave()}
-          placeholder={DEFAULT_ELECTRUM_URL}
+          placeholder={isWS ? (wsDefault || 'wss://your-electrum-server:50004') : (mempoolDefault || 'https://mempool.space/api')}
           className="flex-1 bg-transparent text-sm font-mono text-ink/90 placeholder-ink/20 focus:outline-none"
         />
       </div>
-      {error && (
-        <p className="text-xs text-negative font-mono">{error}</p>
-      )}
+
+      {error && <p className="text-xs text-negative font-mono">{error}</p>}
+
       <div className="flex justify-end pt-1 border-t border-ink/5">
         <button
-          onClick={handleSave}
+          onClick={() => handleSave()}
           disabled={!isDirty || saving}
           className="px-5 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-light disabled:opacity-30 disabled:cursor-not-allowed transition-all"
         >
@@ -416,10 +467,10 @@ export default function SettingsPage() {
         <RelayManager />
       </section>
 
-      {/* Electrum */}
+      {/* Electrum / mempool */}
       <section className="border border-ink/10 rounded-xl overflow-hidden">
         <div className="px-5 py-3 bg-elevated border-b border-ink/5">
-          <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">electrum server</p>
+          <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">bitcoin backend</p>
         </div>
         <ElectrumManager />
       </section>

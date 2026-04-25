@@ -5,8 +5,16 @@ import { useNostrUser } from '../hooks/useNostrUser'
 import { useNavBadges } from '../hooks/useNavBadges'
 import { useElectrumContext } from '../context/ElectrumContext'
 import { useLang } from '../context/LangContext'
+import { BITCOIN_NETWORK_NAME } from '../lib/config'
 import NavBadge from './NavBadge'
 import { db } from '../db'
+
+const NETWORK_BADGE: Record<string, { label: string; className: string }> = {
+  regtest: { label: 'regtest', className: 'bg-ink/10 text-ink/40' },
+  testnet: { label: 'testnet4', className: 'bg-amber-400/15 text-amber-400/80' },
+  signet:  { label: 'signet',   className: 'bg-violet-400/15 text-violet-400/80' },
+  mainnet: { label: 'mainnet',  className: 'bg-positive/15 text-positive/80' },
+}
 
 const STATUS_COLOR = {
   connected:    'bg-positive',
@@ -126,6 +134,14 @@ export default function Navbar() {
         {/* Logo + block height */}
         <div className="flex items-center gap-3">
           <span className="font-mono font-bold tracking-tight text-brand">predictr</span>
+          {BITCOIN_NETWORK_NAME !== 'mainnet' && (() => {
+            const badge = NETWORK_BADGE[BITCOIN_NETWORK_NAME] ?? { label: BITCOIN_NETWORK_NAME, className: 'bg-ink/10 text-ink/40' }
+            return (
+              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${badge.className}`}>
+                {badge.label}
+              </span>
+            )
+          })()}
           {blockHeight !== null && (
             <span className="font-mono text-xs text-ink/30 hidden sm:inline">
               block {blockHeight.toLocaleString()}

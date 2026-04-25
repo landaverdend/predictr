@@ -2,7 +2,7 @@ import { Transaction, Address, OutScript, TaprootControlBlock } from '@scure/btc
 import type { Contract } from '../db'
 import { db } from '../db'
 import { buildContractOutputScripts, REGTEST } from './contract'
-import type { ElectrumWS } from './electrum'
+import type { ElectrumClient as ElectrumWS } from './electrumClient'
 import { hexToBytes, equalBytes, REFUND_DELAY } from './utils'
 import type { WalletUTXO } from '../hooks/useWallet'
 import { getDecryptedPrivkey } from './pinCrypto'

@@ -1,13 +1,15 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { ElectrumWS } from '../lib/electrum'
+import { createClient, isMempoolUrl } from '../lib/electrumClient'
+import type { ElectrumClient } from '../lib/electrumClient'
 import { db } from '../db'
 import { DEFAULT_ELECTRUM_URL as CONFIG_DEFAULT_ELECTRUM_URL } from '../lib/config'
 
 const ELECTRUM_KEY = 'electrum_url'
 export const DEFAULT_ELECTRUM_URL = CONFIG_DEFAULT_ELECTRUM_URL
+export { isMempoolUrl }
 
 type ElectrumContextValue = {
-  client: ElectrumWS | null
+  client: ElectrumClient | null
   url: string
   error: string | null
   blockHeight: number | null
@@ -18,28 +20,25 @@ const ElectrumContext = createContext<ElectrumContextValue | null>(null)
 
 export function ElectrumProvider({ children }: { children: React.ReactNode }) {
   const [url, setUrl] = useState<string | null>(null)
-  const [client, setClient] = useState<ElectrumWS | null>(null)
+  const [client, setClient] = useState<ElectrumClient | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [blockHeight, setBlockHeight] = useState<number | null>(null)
 
-  // Load URL from DB on mount
   useEffect(() => {
     db.settings.get(ELECTRUM_KEY).then(saved => {
       setUrl(saved?.value as string ?? DEFAULT_ELECTRUM_URL)
     })
   }, [])
 
-  // Connect whenever URL changes
   useEffect(() => {
     if (!url) return
-    const instance = new ElectrumWS(url)
+    const instance = createClient(url)
     setClient(null)
     setError(null)
     instance.connect()
       .then(() => {
         setClient(instance)
         setError(null)
-        // blockchain.headers.subscribe returns current tip AND sends push on new blocks
         instance.onNotification('blockchain.headers.subscribe', (params) => {
           const tip = Array.isArray(params) ? params[0] : params
           if (tip && typeof tip === 'object' && 'height' in tip) {
