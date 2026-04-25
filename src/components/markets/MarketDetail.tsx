@@ -148,10 +148,10 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
           <div className="space-y-2">
             <div className="flex h-2.5 rounded-full overflow-hidden bg-ink/5">
               <div
-                className="bg-positive/70 transition-all duration-700 rounded-full"
+                className="bg-positive/70 transition-all duration-700"
                 style={{ width: `${yesPct}%` }}
               />
-              <div className="bg-negative/50 flex-1 rounded-full" />
+              <div className="bg-negative/50 flex-1" />
             </div>
             <div className="flex justify-between text-xs font-mono">
               <span className="text-positive font-medium">YES {yesPct}%</span>
