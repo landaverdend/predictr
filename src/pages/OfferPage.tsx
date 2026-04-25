@@ -102,7 +102,7 @@ export default function OfferPage() {
   const isFilled = offer.status !== 'open'
 
   return (
-    <main className="flex-1 px-6 py-10 max-w-xl mx-auto w-full space-y-6">
+    <main className="flex-1 px-4 sm:px-6 py-6 sm:py-10 max-w-xl mx-auto w-full space-y-4 sm:space-y-6">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-ink/40 hover:text-ink/70 transition-colors">
         <span>←</span> back
       </button>
@@ -134,7 +134,7 @@ export default function OfferPage() {
       )}
 
       {/* Offer card */}
-      <div className="border border-ink/10 rounded-xl p-6 space-y-5">
+      <div className="border border-ink/10 rounded-xl p-4 sm:p-6 space-y-4 sm:space-y-5">
         <div className="flex items-center justify-between">
           <p className="text-[10px] uppercase tracking-wider text-ink/30">offer</p>
           {isFilled && (
@@ -145,12 +145,12 @@ export default function OfferPage() {
         {/* Maker */}
         <button
           onClick={() => navigate(`/user/${offer.makerPubkey}`)}
-          className="flex items-center gap-3 hover:opacity-75 transition-opacity"
+          className="flex flex-col items-center gap-2 w-full hover:opacity-75 transition-opacity"
         >
-          <Avatar pubkey={offer.makerPubkey} size="md" />
-          <div className="text-left">
-            {makerProfile?.name && <p className="text-sm font-medium">{makerProfile.name}</p>}
-            <p className="text-xs font-mono text-ink/40">{truncate(offer.makerPubkey)}</p>
+          <Avatar pubkey={offer.makerPubkey} size="xl" />
+          <div className="text-center">
+            {makerProfile?.name && <p className="text-base font-medium">{makerProfile.name}</p>}
+            <p className="text-sm font-mono text-ink/40">{truncate(offer.makerPubkey)}</p>
           </div>
         </button>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { NostrEvent } from 'nostr-tools'
+import { nip19 } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext } from '../context/ElectrumContext'
 import { useProfiles } from '../hooks/useProfiles'
@@ -35,11 +36,14 @@ function StatCard({ label, value, accent }: { label: string; value: string; acce
   )
 }
 
-function OfferRow({ offer }: { offer: Offer }) {
+function OfferRow({ offer, onClick }: { offer: Offer; onClick: () => void }) {
   const ts = takerStake(offer)
   const isOpen = offer.status === 'open'
   return (
-    <div className="flex items-center gap-3 px-4 py-3 border-b border-ink/5 last:border-0">
+    <button
+      onClick={onClick}
+      className="w-full text-left flex items-center gap-3 px-4 py-3 border-b border-ink/5 last:border-0 hover:bg-ink/3 transition-colors"
+    >
       <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${offer.side === 'YES' ? 'bg-positive/10 text-positive' : 'bg-negative/10 text-negative'}`}>
         {offer.side}
       </span>
@@ -55,7 +59,7 @@ function OfferRow({ offer }: { offer: Offer }) {
         <p className={`text-[11px] font-medium ${isOpen ? 'text-positive/70' : 'text-ink/30'}`}>{offer.status}</p>
         <p className="text-[10px] text-ink/25 mt-0.5">{timeAgo(offer.createdAt)}</p>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -198,8 +202,8 @@ export default function UserPage() {
             <p className="text-sm text-ink/50 leading-relaxed">{profile.about}</p>
           )}
           <div className="flex items-center gap-2 pt-1">
-            <p className="text-[11px] font-mono text-ink/25 truncate">{pubkey}</p>
-            <CopyButton text={pubkey} />
+            <p className="text-[11px] font-mono text-ink/25 truncate">{nip19.npubEncode(pubkey)}</p>
+            <CopyButton text={nip19.npubEncode(pubkey)} />
           </div>
         </div>
 
@@ -233,7 +237,7 @@ export default function UserPage() {
           <section>
             <h2 className="text-xs text-ink/30 uppercase tracking-wider font-medium mb-3">offers</h2>
             <div className="border border-ink/10 rounded-xl overflow-hidden">
-              {userOffers.map(o => <OfferRow key={o.id} offer={o} />)}
+              {userOffers.map(o => <OfferRow key={o.id} offer={o} onClick={() => navigate(`/offer/${o.makerPubkey}/${o.id}`)} />)}
             </div>
           </section>
         )}

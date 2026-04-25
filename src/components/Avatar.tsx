@@ -2,14 +2,14 @@ import { useProfiles } from '../hooks/useProfiles'
 
 type AvatarProps = {
   pubkey: string
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
 }
 
 export function Avatar({ pubkey, size = 'sm' }: AvatarProps) {
   const profiles = useProfiles([pubkey])
   const profile = profiles.get(pubkey)
 
-  const dim = size === 'sm' ? 'w-5 h-5 text-[9px]' : size === 'md' ? 'w-7 h-7 text-[10px]' : 'w-16 h-16 text-base'
+  const dim = size === 'sm' ? 'w-5 h-5 text-[9px]' : size === 'md' ? 'w-7 h-7 text-[10px]' : size === 'lg' ? 'w-16 h-16 text-base' : 'w-24 h-24 text-2xl'
 
   if (profile?.picture) {
     return (
