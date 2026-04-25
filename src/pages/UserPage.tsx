@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import type { NostrEvent } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
+import { useElectrumContext } from '../context/ElectrumContext'
 import { useProfiles } from '../hooks/useProfiles'
 import { parseMarket, parseOffer, computeStats, takerStake, tag, truncate, timeAgo } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import { KIND_MARKET_ANNOUNCEMENT, KIND_OFFER } from '../lib/kinds'
+import { BlocktimeLabel } from '../components/BlocktimeLabel'
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false)
@@ -57,7 +59,7 @@ function OfferRow({ offer }: { offer: Offer }) {
   )
 }
 
-function MarketRow({ market, offers, onClick }: { market: Market; offers: Offer[]; onClick: () => void }) {
+function MarketRow({ market, offers, blockHeight, onClick }: { market: Market; offers: Offer[]; blockHeight: number | null; onClick: () => void }) {
   const stats = computeStats(offers)
   const total = stats.yesVolume + stats.noVolume
   const yesPct = total > 0 ? Math.round(stats.yesVolume / total * 100) : null
@@ -81,7 +83,7 @@ function MarketRow({ market, offers, onClick }: { market: Market; offers: Offer[
         </div>
       )}
       <div className="flex items-center justify-between text-[11px] text-ink/30">
-        <span>resolves block {market.resolutionBlockheight.toLocaleString()}</span>
+        <BlocktimeLabel resolutionBlock={market.resolutionBlockheight} currentBlock={blockHeight} className="text-[11px] text-ink/30" />
         <span>{stats.openCount} open · {stats.filledCount} filled</span>
       </div>
     </button>
@@ -92,6 +94,7 @@ export default function UserPage() {
   const { pubkey } = useParams<{ pubkey: string }>()
   const navigate = useNavigate()
   const { subscribe } = useRelayContext()
+  const { blockHeight } = useElectrumContext()
   const profiles = useProfiles(pubkey ? [pubkey] : [])
   const profile = pubkey ? profiles.get(pubkey) : undefined
 
@@ -217,6 +220,7 @@ export default function UserPage() {
                   key={m.id}
                   market={m}
                   offers={offersByMarket[m.id] ?? []}
+                  blockHeight={blockHeight}
                   onClick={() => navigate(`/markets/${m.id}`)}
                 />
               ))}

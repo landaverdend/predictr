@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { useRelayContext } from '../../context/RelayContext'
+import { useElectrumContext } from '../../context/ElectrumContext'
 import { db, type OracleMarket } from '../../db'
 import { KIND_RESOLUTION } from '../../lib/kinds'
 import { getNostr } from '../../lib/signer'
+import { BlocktimeLabel } from '../BlocktimeLabel'
 
 export function MarketRow({ market }: { market: OracleMarket }) {
   const { publish } = useRelayContext()
+  const { blockHeight } = useElectrumContext()
   const [resolving, setResolving] = useState(false)
   const [pending, setPending] = useState<'YES' | 'NO' | null>(null)
   const [error, setError] = useState('')
@@ -59,7 +62,7 @@ export function MarketRow({ market }: { market: OracleMarket }) {
         )}
       </div>
 
-      <p className="text-xs text-ink/30 font-mono">resolves at block {market.resolutionBlockheight.toLocaleString()}</p>
+      <BlocktimeLabel resolutionBlock={market.resolutionBlockheight} currentBlock={blockHeight} className="text-xs text-ink/30" />
 
       {!resolved && !resolving && (
         <button

@@ -2,9 +2,24 @@ import { useNavigate } from 'react-router-dom'
 import type { Market, Offer } from '../../lib/market'
 import type { Resolution } from '../../pages/MarketsPage'
 import { truncate, computeStats } from '../../lib/market'
+import { projectedResolution } from '../../lib/blocktime'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { Avatar } from '../Avatar'
 import { useLang } from '../../context/LangContext'
+
+/** Compact pill shown on the card — just the relative time, hover for more */
+function ResolutionPill({ resolutionBlock, currentBlock }: { resolutionBlock: number; currentBlock: number | null }) {
+  const info = projectedResolution(resolutionBlock, currentBlock)
+  if (!info) return <span className="font-mono text-ink/25">block {resolutionBlock.toLocaleString()}</span>
+  return (
+    <span
+      className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-ink/8 border border-ink/10 text-ink/40 whitespace-nowrap"
+      title={`block ${resolutionBlock.toLocaleString()} · ${info.absolute} (rough estimate)`}
+    >
+      {info.relative === 'resolved' ? 'resolved' : `resolves ${info.relative}`}
+    </span>
+  )
+}
 
 function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
   market: Market
@@ -49,13 +64,13 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
         </button>
         <div className="pt-1 border-t border-ink/5 space-y-2">
           <div className="flex items-center justify-between text-xs text-ink/30">
-            <span>block {market.resolutionBlockheight.toLocaleString()}</span>
             <div className="flex items-center gap-2">
               {stats.filledCount > 0 && (
                 <span className="font-mono text-ink/40">{stats.totalVolume.toLocaleString()} sats</span>
               )}
               <span>{stats.openCount} {t('card.open')}</span>
             </div>
+            <ResolutionPill resolutionBlock={market.resolutionBlockheight} currentBlock={blockHeight} />
           </div>
           {(stats.yesVolume > 0 || stats.noVolume > 0) && (() => {
             const total = stats.yesVolume + stats.noVolume
@@ -88,7 +103,7 @@ export function MarketGrid({ markets, offers, resolutions, blockHeight, onSelect
   onSelect: (m: Market) => void
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+    <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
       {markets.map(market => (
         <MarketCard
           key={market.id}

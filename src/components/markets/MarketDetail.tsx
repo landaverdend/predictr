@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import type { Market, Offer } from '../../lib/market'
 import type { Resolution } from '../../pages/MarketsPage'
 import { takerStake, truncate, timeAgo, computeStats } from '../../lib/market'
+import { BlocktimeLabel } from '../BlocktimeLabel'
 import { ImagePlaceholder } from './ImagePlaceholder'
 import { PlaceBetForm } from './PlaceBetForm'
 import { TakeOfferModal } from './TakeOfferModal'
 import { Avatar } from '../Avatar'
-import { Input } from '../Input'
 import { useProfiles, type NostrProfile } from '../../hooks/useProfiles'
 import { useLang } from '../../context/LangContext'
 
@@ -190,7 +190,11 @@ export function MarketDetail({ market, offers, resolution, blockHeight, onBack }
             </button>
             <div className="ml-auto text-right">
               <p className="text-[10px] uppercase tracking-wider text-ink/30">{t('detail.resolves_at')}</p>
-              <p className="text-xs font-mono font-medium text-ink/70 mt-0.5">block {market.resolutionBlockheight.toLocaleString()}</p>
+              <BlocktimeLabel
+                resolutionBlock={market.resolutionBlockheight}
+                currentBlock={blockHeight}
+                className="text-xs text-ink/70 mt-0.5 flex-wrap"
+              />
             </div>
           </div>
         </div>

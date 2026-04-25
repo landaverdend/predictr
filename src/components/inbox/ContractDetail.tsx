@@ -12,6 +12,8 @@ import { REFUND_DELAY } from '../../lib/utils'
 import { Avatar } from '../Avatar'
 import { useProfiles } from '../../hooks/useProfiles'
 import { useLang } from '../../context/LangContext'
+import { useElectrumContext } from '../../context/ElectrumContext'
+import { BlocktimeLabel } from '../BlocktimeLabel'
 
 // Status labels are derived from useLang() — see statusLabel computation in ContractDetail
 
@@ -49,6 +51,7 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
   const [refundError, setRefundError] = useState('')
   const [refusing, setRefusing] = useState(false)
   const { client } = useElectrum()
+  const { blockHeight } = useElectrumContext()
 
   async function handleSignAndBroadcast() {
     if (!client) { setSignError('electrum not connected'); return }
@@ -174,7 +177,9 @@ export function ContractDetail({ contract, onBack }: { contract: Contract; onBac
               <Field label={t('contract.taker_stake')} mono>{contract.takerStake.toLocaleString()} sats</Field>
               <Field label={t('contract.total_pot')} mono>{totalPot.toLocaleString()} sats</Field>
               <Field label={t('contract.confidence')} mono>{contract.confidence}%</Field>
-              <Field label={t('contract.resolves_at_block')} mono>{contract.resolutionBlockheight.toLocaleString()}</Field>
+              <Field label={t('contract.resolves_at_block')}>
+                <BlocktimeLabel resolutionBlock={contract.resolutionBlockheight} currentBlock={blockHeight} className="text-xs flex-wrap" />
+              </Field>
               {contract.fundingTxid && (
                 <Field label={t('contract.funding_tx')} mono span2>
                   <span className="break-all text-[10px] text-ink/50">{contract.fundingTxid}</span>

@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useRelayContext } from '../../context/RelayContext'
 import { useLang } from '../../context/LangContext'
+import { useElectrumContext } from '../../context/ElectrumContext'
 import { db } from '../../db'
 import { KIND_MARKET_ANNOUNCEMENT } from '../../lib/kinds'
 import { getNostr } from '../../lib/signer'
+import { BlocktimeLabel } from '../BlocktimeLabel'
 
 function randomHex(bytes: number): string {
   return Array.from(crypto.getRandomValues(new Uint8Array(bytes)))
@@ -20,6 +22,7 @@ async function sha256hex(hex: string): Promise<string> {
 export function CreateMarketForm() {
   const { publish, relays: savedRelays } = useRelayContext()
   const { t } = useLang()
+  const { blockHeight } = useElectrumContext()
   const [question, setQuestion] = useState('')
   const [description, setDescription] = useState('')
   const [resolutionBlockheight, setResolutionBlockheight] = useState('')
@@ -33,6 +36,13 @@ export function CreateMarketForm() {
   useEffect(() => {
     if (savedRelays.length > 0) setRelays(savedRelays)
   }, [savedRelays.join(',')])
+
+  // Default blockheight to current once known, only if user hasn't typed anything
+  useEffect(() => {
+    if (blockHeight !== null && resolutionBlockheight === '') {
+      setResolutionBlockheight(String(blockHeight))
+    }
+  }, [blockHeight])
   const [status, setStatus] = useState<'idle' | 'publishing' | 'done' | 'error'>('idle')
   const [error, setError] = useState('')
 
@@ -215,12 +225,23 @@ export function CreateMarketForm() {
       <div className="space-y-1.5">
         <label className="text-xs text-ink/50 uppercase tracking-wider">{t('create.blockheight')}</label>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
           placeholder="895000"
           value={resolutionBlockheight}
-          onChange={e => setResolutionBlockheight(e.target.value)}
+          onChange={e => {
+            const digits = e.target.value.replace(/\D/g, '')
+            setResolutionBlockheight(digits)
+          }}
           className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors font-mono"
         />
+        {resolutionBlockheight && blockHeight !== null && (
+          <BlocktimeLabel
+            resolutionBlock={parseInt(resolutionBlockheight)}
+            currentBlock={blockHeight}
+            className="text-xs text-ink/40 flex-wrap"
+          />
+        )}
         <p className="text-xs text-ink/30">{t('create.blockheight_help')}</p>
       </div>
 

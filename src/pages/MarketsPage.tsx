@@ -56,7 +56,7 @@ export default function MarketsPage() {
   }, [subscribe])
 
   return (
-    <main className="flex-1 px-6 py-12 max-w-7xl mx-auto w-full">
+    <main className="flex-1 px-6 py-12 max-w-5xl mx-auto w-full">
       <div className="mb-10">
         <h1 className="text-2xl font-bold mb-2">{t('markets.title')}</h1>
         <p className="text-ink/40 text-sm">{t('markets.subtitle')}</p>
