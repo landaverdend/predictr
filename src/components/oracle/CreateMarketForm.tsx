@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import MDEditor from '@uiw/react-md-editor'
+import '@uiw/react-md-editor/markdown-editor.css'
 import { useRelayContext } from '../../context/RelayContext'
 import { useLang } from '../../context/LangContext'
 import { useElectrumContext } from '../../context/ElectrumContext'
@@ -18,6 +20,24 @@ async function sha256hex(hex: string): Promise<string> {
   const bytes = Uint8Array.from(hex.match(/.{2}/g)!.map(b => parseInt(b, 16)))
   const hash = await crypto.subtle.digest('SHA-256', bytes)
   return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+function MarkdownEditor({ label, value, onChange }: {
+  label: React.ReactNode
+  value: string
+  onChange: (v: string) => void
+}) {
+  return (
+    <div className="space-y-1.5" data-color-mode="dark">
+      <label className="text-xs text-ink/50 uppercase tracking-wider">{label}</label>
+      <MDEditor
+        value={value}
+        onChange={v => onChange(v ?? '')}
+        height={200}
+        preview="edit"
+      />
+    </div>
+  )
 }
 
 export function CreateMarketForm() {
@@ -200,18 +220,11 @@ export function CreateMarketForm() {
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-xs text-ink/50 uppercase tracking-wider">
-          {t('create.description')} <span className="normal-case text-ink/30">{t('create.optional')}</span>
-        </label>
-        <textarea
-          placeholder="Any additional context about how this market will be resolved..."
-          value={description}
-          onChange={e => setDescription(e.target.value)}
-          rows={3}
-          className="w-full bg-ink/5 border border-ink/10 rounded-lg px-4 py-3 text-sm placeholder-ink/20 focus:outline-none focus:border-ink/30 transition-colors resize-none"
-        />
-      </div>
+      <MarkdownEditor
+        label={<>{t('create.description')} <span className="normal-case text-ink/30">{t('create.optional')}</span></>}
+        value={description}
+        onChange={setDescription}
+      />
 
       <div className="space-y-1.5">
         <label className="text-xs text-ink/50 uppercase tracking-wider">

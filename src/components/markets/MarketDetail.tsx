@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import MDEditor from '@uiw/react-md-editor'
+import '@uiw/react-md-editor/markdown-editor.css'
 import type { Market, Offer, Fill } from '../../lib/market'
 import type { Resolution } from '../../pages/MarketsPage'
 import { takerStake, truncate, timeAgo, computeStats } from '../../lib/market'
@@ -198,7 +200,9 @@ export function MarketDetail({ market, offers, fills, resolution, blockHeight, o
           <div>
             <h2 className="text-xl font-semibold leading-snug">{market.question}</h2>
             {market.description && (
-              <p className="text-sm text-ink/50 leading-relaxed mt-2">{market.description}</p>
+              <div className="mt-2 text-sm text-ink/50" data-color-mode="dark">
+                <MDEditor.Markdown source={market.description} style={{ background: 'transparent', color: 'inherit', fontSize: '0.875rem' }} />
+              </div>
             )}
             {!isClosed && (
               <div className="flex flex-col gap-2 mt-5">

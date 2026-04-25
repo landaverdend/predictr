@@ -144,7 +144,7 @@ export default function Navbar() {
       <header className="border-b border-ink/10 px-4 sm:px-6 py-3 flex items-center justify-between bg-navbar">
         {/* Logo + block height */}
         <div className="flex items-center gap-3">
-          <span className="font-mono font-bold tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">predictr</span>
+          <span className="font-mono font-medium tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">predictr</span>
           {BITCOIN_NETWORK_NAME !== 'mainnet' && (() => {
             const badge = NETWORK_BADGE[BITCOIN_NETWORK_NAME] ?? { label: BITCOIN_NETWORK_NAME, className: 'bg-ink/10 text-ink/40' }
             return (
