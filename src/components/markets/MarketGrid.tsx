@@ -96,6 +96,32 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
   )
 }
 
+export function MarketCardSkeleton() {
+  return (
+    <div className="border border-ink/10 rounded-lg overflow-hidden">
+      {/* Image */}
+      <div className="w-full h-40 bg-gradient-to-r from-ink/5 via-ink/10 to-ink/5 bg-[length:200%_100%] animate-[shimmer_1.4s_ease-in-out_infinite]" />
+      <div className="p-5 space-y-4">
+        {/* Title */}
+        <div className="space-y-2">
+          <div className="h-3.5 rounded bg-ink/8 animate-pulse w-full" />
+          <div className="h-3.5 rounded bg-ink/8 animate-pulse w-3/4" />
+        </div>
+        {/* Avatar + name */}
+        <div className="flex items-center gap-2">
+          <div className="w-5 h-5 rounded-full bg-ink/10 animate-pulse shrink-0" />
+          <div className="h-2.5 w-24 rounded bg-ink/8 animate-pulse" />
+        </div>
+        {/* Footer */}
+        <div className="pt-1 border-t border-ink/5 space-y-3">
+          <div className="h-2.5 w-20 rounded bg-ink/8 animate-pulse" />
+          <div className="h-5 w-28 rounded-full bg-ink/8 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function MarketGrid({ markets, offers, resolutions, blockHeight, onSelect }: {
   markets: Market[]
   offers: Record<string, Offer[]>

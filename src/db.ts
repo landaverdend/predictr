@@ -91,6 +91,14 @@ export interface Setting {
   value: unknown
 }
 
+export interface TxRecord {
+  txid: string        // primary key
+  height: number      // 0 = unconfirmed
+  blockTime?: number  // unix timestamp (mempool only)
+  address: string     // which wallet address this appeared on
+  seenAt: number      // unix ms — when we first saw it
+}
+
 export interface OracleMarket {
   id: string                      // d-tag / marketId
   eventId: string                 // Kind 30050 event ID
@@ -113,6 +121,7 @@ class NostrDlcDb extends Dexie {
   wallet!: Table<WalletKey>
   oracleMarkets!: Table<OracleMarket>
   settings!: Table<Setting>
+  transactions!: Table<TxRecord>
 
   constructor(network: string) {
     super(`nostr_dlc_${network}`)
@@ -123,6 +132,15 @@ class NostrDlcDb extends Dexie {
       wallet: 'id',
       oracleMarkets: 'id, createdAt',
       settings: '&key',
+    })
+    this.version(2).stores({
+      contracts: 'id, role, status, marketId, createdAt, updatedAt',
+      messages: 'id, contractId, createdAt',
+      keys: 'id',
+      wallet: 'id',
+      oracleMarkets: 'id, createdAt',
+      settings: '&key',
+      transactions: '&txid, height, address, seenAt',
     })
   }
 }

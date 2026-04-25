@@ -6,7 +6,7 @@ import { useElectrumContext } from '../context/ElectrumContext'
 import { useLang } from '../context/LangContext'
 import { parseMarket, parseOffer, tag, isValidMarket } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
-import { MarketGrid } from '../components/markets/MarketGrid'
+import { MarketGrid, MarketCardSkeleton } from '../components/markets/MarketGrid'
 import { KIND_MARKET_ANNOUNCEMENT, KIND_OFFER, KIND_RESOLUTION } from '../lib/kinds'
 
 export type Resolution = { outcome: 'YES' | 'NO'; preimage: string }
@@ -19,6 +19,16 @@ export default function MarketsPage() {
   const [markets, setMarkets] = useState<Record<string, Market>>({})
   const [offers, setOffers] = useState<Record<string, Offer[]>>({})
   const [resolutions, setResolutions] = useState<Record<string, Resolution>>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setLoading(false), 3000)
+    return () => clearTimeout(timeout)
+  }, [])
+
+  useEffect(() => {
+    if (Object.keys(markets).length > 0) setLoading(false)
+  }, [markets])
 
   useEffect(() => {
     const unsub = subscribe(
@@ -61,7 +71,11 @@ export default function MarketsPage() {
         <h1 className="text-2xl font-bold mb-2">{t('markets.title')}</h1>
         <p className="text-ink/40 text-sm">{t('markets.subtitle')}</p>
       </div>
-      {Object.values(markets).length === 0 ? (
+      {loading && Object.values(markets).length === 0 ? (
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
+          {[0, 1, 2].map(i => <MarketCardSkeleton key={i} />)}
+        </div>
+      ) : Object.values(markets).length === 0 ? (
         <div className="text-center text-ink/30 text-sm py-24">
           {t('markets.empty')}
         </div>

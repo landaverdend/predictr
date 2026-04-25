@@ -21,6 +21,11 @@
   --color-caution:  #fbbf24;   /* amber-400  — pending, action */
 }
 
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @layer base {
   html, body {
     background-color: var(--color-base);

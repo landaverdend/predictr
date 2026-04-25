@@ -133,13 +133,17 @@ export default function Navbar() {
     { to: '/wallet', key: 'nav.wallet' as const },
   ]
 
+  const desktopOnlyLinks = [
+    { to: '/about', key: 'nav.about' as const },
+  ]
+
   return (
     <>
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <header className="border-b border-ink/10 px-4 sm:px-6 py-3 flex items-center justify-between bg-navbar">
         {/* Logo + block height */}
         <div className="flex items-center gap-3">
-          <span className="font-mono font-bold tracking-tight text-brand">predictr</span>
+          <span className="font-mono font-bold tracking-tight bg-gradient-to-r from-blue-400 to-violet-400 bg-clip-text text-transparent">predictr</span>
           {BITCOIN_NETWORK_NAME !== 'mainnet' && (() => {
             const badge = NETWORK_BADGE[BITCOIN_NETWORK_NAME] ?? { label: BITCOIN_NETWORK_NAME, className: 'bg-ink/10 text-ink/40' }
             return (
@@ -157,7 +161,7 @@ export default function Navbar() {
 
         {/* Desktop nav */}
         <nav className="hidden sm:flex items-center gap-5">
-          {links.map(({ to, key }) => (
+          {[...links, ...desktopOnlyLinks].map(({ to, key }) => (
             <NavLink
               key={to}
               to={to}
@@ -172,19 +176,8 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Right: about + status dot + user */}
+        {/* Right: status dot + user */}
         <div className="flex items-center gap-3">
-          <NavLink
-            to="/about"
-            className={({ isActive }) =>
-              `hidden sm:flex items-center justify-center w-6 h-6 rounded-full transition-colors ${isActive ? 'text-ink/70 bg-ink/10' : 'text-ink/25 hover:text-ink/60'}`
-            }
-            aria-label="About"
-          >
-            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 1 1 0 1.5A.75.75 0 0 1 8 4zm-.25 3h1.5v4.5h-1.5V7z"/>
-            </svg>
-          </NavLink>
           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_COLOR[status]}`} />
           <UserMenu />
         </div>

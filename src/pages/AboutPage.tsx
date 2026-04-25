@@ -3,33 +3,33 @@ import { useLang } from '../context/LangContext'
 const content = {
   en: {
     title: 'about predictr',
-    subtitle: 'a non-custodial prediction market on Bitcoin and Nostr',
+    subtitle: 'non-custodial prediction markets on Bitcoin and Nostr',
 
     sections: [
       {
         heading: 'What is predictr?',
-        body: `predictr is a peer-to-peer prediction market with no server, no backend, and no custody. Two parties agree on a binary question (YES or NO), lock Bitcoin into a script on-chain, and let an oracle settle the outcome. No company holds your money. No account required. Everything runs in your browser.`,
+        body: `predictr is a peer-to-peer prediction market. No server, no custody, no accounts. Two parties bet on a binary outcome (YES or NO), lock Bitcoin into an on-chain script, and an oracle settles it. Your money never touches a third party.`,
       },
       {
         heading: 'How it works',
-        body: `An oracle publishes a market by committing to two SHA-256 hashes — one representing YES, one representing NO. A maker picks a side and posts an offer over Nostr. A taker accepts, and together they fund a Taproot contract locking both stakes on-chain.\n\nWhen the event resolves, the oracle reveals the preimage for the correct outcome. The winner uses that preimage plus their signature to claim the full pot. The loser's path in the script becomes permanently unspendable.`,
+        body: `An oracle opens a market by publishing two SHA-256 hashes, one for YES and one for NO. A maker picks a side and posts an offer over Nostr. A taker accepts it, and together they fund a Taproot contract on-chain with both stakes locked in.\n\nWhen the event resolves, the oracle reveals the preimage for the winning side. The winner presents that preimage along with their signature to claim the full pot.`,
       },
       {
-        heading: 'The CLTV refund — you are never locked out',
-        body: `Every contract includes a time-locked escape path. After the resolution blockheight passes plus a safety delay, either party can reclaim their own funds unilaterally — no oracle, no counterparty, no cooperation required.\n\nThis means the worst case is waiting. Your sats cannot be permanently trapped.`,
+        heading: 'The CLTV refund',
+        body: `Every contract has a time-locked exit. Once the resolution block passes and a safety delay clears, either party can pull their own funds out without help from anyone. No oracle signature, no counterparty cooperation needed.\n\nWorst case: you wait. Your sats cannot be permanently stuck.`,
       },
       {
-        heading: '⚠ The oracle is a trusted third party',
-        body: `The oracle cannot steal your funds — the script only allows spending with the correct preimage, which the oracle must commit to before taking any bets.\n\nHowever, the oracle can grief both parties by refusing to reveal a preimage, delaying settlement until the CLTV refund path opens. Choose oracles you trust, or run your own. Do not participate in markets run by anonymous or unknown oracles.`,
+        heading: '⚠ Do not trust the oracle',
+        body: `The oracle cannot steal funds. The script only pays out to whoever holds the correct preimage, and the oracle commits to both hashes upfront before any money moves.\n\nWhat the oracle can do is go silent. If they never publish a preimage, both parties sit and wait until the CLTV refund opens. Only bet in markets run by oracles you actually trust, or run your own.`,
         warning: true,
       },
       {
         heading: 'Non-custodial',
-        body: `Your private keys are generated locally in your browser and encrypted at rest with AES-256-GCM using a PIN you choose. They never leave your device. No server, relay, or third party ever has access to them.`,
+        body: `Keys are generated in your browser and encrypted locally with AES-256-GCM behind a PIN. They never leave your device. Nothing here has custody of anything.`,
       },
       {
         heading: 'No backend',
-        body: `All contract state, wallet keys, and message history are stored locally in IndexedDB — the database built into your browser. Markets are published and discovered over the Nostr relay network. Bitcoin transactions are broadcast directly to the network via an Electrum server of your choice. There is no predictr server.`,
+        body: `Contract state, wallet keys, and messages all live in IndexedDB in your browser. Markets are posted and found over Nostr. Transactions go out through an Electrum server you configure. There is no predictr server.`,
       },
     ],
 
@@ -44,28 +44,28 @@ const content = {
     sections: [
       {
         heading: '¿Qué es predictr?',
-        body: `predictr es un mercado de predicción entre pares sin servidor, sin backend y sin custodia. Dos partes acuerdan una pregunta binaria (SÍ o NO), bloquean Bitcoin en un script on-chain y dejan que un oráculo resuelva el resultado. Ninguna empresa guarda tu dinero. No se requiere cuenta. Todo funciona en tu navegador.`,
+        body: `predictr es un mercado de predicción entre pares. Sin servidor, sin custodia, sin cuentas. Dos partes apuestan sobre un resultado binario (SÍ o NO), bloquean Bitcoin en un script on-chain y un oráculo lo resuelve. Tu dinero nunca pasa por un tercero.`,
       },
       {
         heading: 'Cómo funciona',
-        body: `Un oráculo publica un mercado comprometiéndose con dos hashes SHA-256 — uno que representa SÍ y otro NO. Un creador elige un lado y publica una oferta en Nostr. Un tomador la acepta, y juntos financian un contrato Taproot bloqueando ambas apuestas en la cadena.\n\nCuando el evento se resuelve, el oráculo revela la preimagen del resultado correcto. El ganador usa esa preimagen junto con su firma para reclamar el bote completo. El camino del perdedor en el script queda permanentemente inutilizable.`,
+        body: `Un oráculo abre un mercado publicando dos hashes SHA-256, uno para SÍ y otro para NO. Un creador elige un lado y publica una oferta en Nostr. Un tomador la acepta y juntos financian un contrato Taproot on-chain con ambas apuestas bloqueadas.\n\nCuando el evento se resuelve, el oráculo revela la preimagen del lado ganador. El ganador presenta esa preimagen junto con su firma para reclamar el bote completo.`,
       },
       {
-        heading: 'El reembolso CLTV — nunca quedas bloqueado',
-        body: `Cada contrato incluye un camino de escape con bloqueo de tiempo. Después de que pasa el bloque de resolución más un retraso de seguridad, cualquiera de las partes puede recuperar sus propios fondos de forma unilateral — sin oráculo, sin contraparte, sin necesidad de cooperación.\n\nEsto significa que el peor caso es esperar. Tus sats no pueden quedar atrapados permanentemente.`,
+        heading: 'El reembolso CLTV',
+        body: `Cada contrato tiene una salida con bloqueo de tiempo. Una vez que pasa el bloque de resolución y un retraso de seguridad, cualquiera de las partes puede retirar sus propios fondos sin ayuda de nadie. Sin firma del oráculo, sin cooperación de la contraparte.\n\nEn el peor caso: esperas. Tus sats no pueden quedarse bloqueados para siempre.`,
       },
       {
-        heading: '⚠ El oráculo es un tercero de confianza',
-        body: `El oráculo no puede robar tus fondos — el script solo permite gastar con la preimagen correcta, que el oráculo debe comprometerse antes de aceptar apuestas.\n\nSin embargo, el oráculo puede perjudicar a ambas partes negándose a revelar una preimagen, retrasando el acuerdo hasta que se abra el camino de reembolso CLTV. Elige oráculos en los que confíes o gestiona el tuyo propio. No participes en mercados administrados por oráculos anónimos o desconocidos.`,
+        heading: '⚠ No confíes en el oráculo',
+        body: `El oráculo no puede robar fondos. El script solo paga a quien tenga la preimagen correcta, y el oráculo se compromete con ambos hashes desde el principio antes de que se mueva dinero.\n\nLo que sí puede hacer el oráculo es desaparecer. Si nunca publica una preimagen, ambas partes esperan hasta que se abra el reembolso CLTV. Solo apuesta en mercados de oráculos en los que realmente confíes, o corre el tuyo propio.`,
         warning: true,
       },
       {
         heading: 'No custodial',
-        body: `Tus claves privadas se generan localmente en tu navegador y se cifran en reposo con AES-256-GCM usando un PIN que tú eliges. Nunca salen de tu dispositivo. Ningún servidor, relay ni tercero tiene acceso a ellas.`,
+        body: `Las claves se generan en tu navegador y se cifran localmente con AES-256-GCM detrás de un PIN. Nunca salen de tu dispositivo. Nada aquí tiene custodia de nada.`,
       },
       {
         heading: 'Sin backend',
-        body: `Todo el estado del contrato, las claves de billetera y el historial de mensajes se almacenan localmente en IndexedDB — la base de datos integrada en tu navegador. Los mercados se publican y descubren a través de la red de relays de Nostr. Las transacciones de Bitcoin se transmiten directamente a la red a través de un servidor Electrum de tu elección. No existe ningún servidor de predictr.`,
+        body: `El estado de los contratos, las claves de billetera y los mensajes viven en IndexedDB en tu navegador. Los mercados se publican y encuentran en Nostr. Las transacciones salen a través de un servidor Electrum que tú configuras. No hay ningún servidor de predictr.`,
       },
     ],
 
@@ -83,6 +83,18 @@ export default function AboutPage() {
       <div>
         <h1 className="text-2xl font-bold mb-1">{c.title}</h1>
         <p className="text-ink/40 text-sm">{c.subtitle}</p>
+        <p className="text-ink/25 text-xs mt-2">
+          inspired by{' '}
+          <a
+            href="https://github.com/supertestnet/aggeus_market"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline underline-offset-2 hover:text-ink/50 transition-colors"
+          >
+            aggeus_market
+          </a>
+          {' '}by supertestnet
+        </p>
       </div>
 
       <div className="space-y-8">
@@ -119,6 +131,19 @@ export default function AboutPage() {
           ))}
         </ul>
       </section>
+
+      {/* GitHub link */}
+      <a
+        href="https://github.com/landaverdend/predictr"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-ink/30 hover:text-ink/70 transition-colors w-fit pb-2"
+        aria-label="predictr on GitHub"
+      >
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.477 2 2 6.477 2 12c0 4.418 2.865 8.166 6.839 9.489.5.092.682-.217.682-.482 0-.237-.009-.868-.013-1.703-2.782.604-3.369-1.341-3.369-1.341-.454-1.154-1.11-1.462-1.11-1.462-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0 1 12 6.836a9.59 9.59 0 0 1 2.504.337c1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.163 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+        </svg>
+      </a>
     </main>
   )
 }

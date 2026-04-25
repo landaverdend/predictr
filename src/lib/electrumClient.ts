@@ -15,12 +15,19 @@ import type { ElectrumUTXO } from './electrum'
 
 export type { ElectrumUTXO }
 
+export type TxHistoryItem = {
+  txid: string
+  height: number       // 0 = unconfirmed
+  blockTime?: number   // unix timestamp (mempool only)
+}
+
 export interface ElectrumClient {
   connect(): Promise<void>
   close(): void
   getBlockHeight(): Promise<number>
   getUTXOs(address: string): Promise<ElectrumUTXO[]>
   getBalance(address: string): Promise<{ confirmed: number; unconfirmed: number }>
+  getTxHistory(address: string): Promise<TxHistoryItem[]>
   broadcastTx(hex: string): Promise<string>
   subscribeScripthash(scripthash: string, onChange: () => void, address?: string): Promise<string | null>
   onNotification(method: string, handler: (params: unknown) => void): void
@@ -40,6 +47,7 @@ export class ElectrumWSBackend implements ElectrumClient {
   getBlockHeight() { return this.ws.getBlockHeight() }
   getUTXOs(address: string) { return this.ws.getUTXOs(address) }
   getBalance(address: string) { return this.ws.getBalance(address) }
+  getTxHistory(address: string) { return this.ws.getTxHistory(address) }
   broadcastTx(hex: string) { return this.ws.broadcastTx(hex) }
   onNotification(method: string, handler: (params: unknown) => void) {
     this.ws.onNotification(method, handler)
@@ -131,6 +139,17 @@ export class MempoolBackend implements ElectrumClient {
       confirmed: utxos.filter(u => u.height > 0).reduce((s, u) => s + u.value, 0),
       unconfirmed: utxos.filter(u => u.height === 0).reduce((s, u) => s + u.value, 0),
     }
+  }
+
+  async getTxHistory(address: string): Promise<TxHistoryItem[]> {
+    const res = await fetch(`${this.base}/address/${address}/txs`)
+    if (!res.ok) throw new Error(`mempool ${res.status}`)
+    const txs: Array<{ txid: string; status: { confirmed: boolean; block_height?: number; block_time?: number } }> = await res.json()
+    return txs.map(tx => ({
+      txid: tx.txid,
+      height: tx.status.confirmed ? (tx.status.block_height ?? 1) : 0,
+      blockTime: tx.status.block_time,
+    }))
   }
 
   async broadcastTx(hex: string): Promise<string> {

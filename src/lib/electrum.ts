@@ -126,6 +126,12 @@ export class ElectrumWS {
     return this.request('blockchain.scripthash.listunspent', [scripthash])
   }
 
+  async getTxHistory(address: string): Promise<{ txid: string; height: number }[]> {
+    const scripthash = await addressToScripthash(address)
+    const items = await this.request<{ tx_hash: string; height: number }[]>('blockchain.scripthash.get_history', [scripthash])
+    return items.map(i => ({ txid: i.tx_hash, height: i.height }))
+  }
+
   async getBalance(address: string): Promise<{ confirmed: number; unconfirmed: number }> {
     const scripthash = await addressToScripthash(address)
     return this.request('blockchain.scripthash.get_balance', [scripthash])

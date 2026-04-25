@@ -8,6 +8,7 @@ const en = {
   'nav.wallet': 'wallet',
   'nav.settings': 'settings',
   'nav.clear_data': 'clear local data',
+  'nav.about': 'about',
 
   // ── markets page ─────────────────────────────────────────────────────────────
   'markets.title': 'markets',
@@ -185,6 +186,7 @@ const es: Record<keyof typeof en, string> = {
   'nav.wallet': 'billetera',
   'nav.settings': 'ajustes',
   'nav.clear_data': 'borrar datos locales',
+  'nav.about': 'acerca de',
 
   // ── markets page ─────────────────────────────────────────────────────────────
   'markets.title': 'mercados',
