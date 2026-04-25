@@ -302,7 +302,7 @@ const ELECTRUM_WS_DEFAULTS: Record<string, string> = {
   regtest: 'ws://nigiri.kratom.io:5050/electrum',
   testnet: 'wss://blackie.c3-soft.com:50004',
   signet:  '',   // no public signet Electrum WS — user must supply their own
-  mainnet: 'wss://electrum.blockstream.info:50004',
+  mainnet: 'wss://bitcoin.grey.pw:50004',
 }
 
 function ElectrumManager() {
@@ -412,7 +412,7 @@ const NETWORK_ELECTRUM_DEFAULTS: Record<NetworkName, string> = {
   regtest: 'ws://nigiri.kratom.io:5050/electrum',
   testnet: 'wss://blackie.c3-soft.com:50004',
   signet:  '',
-  mainnet: 'wss://electrum.blockstream.info:50004',
+  mainnet: 'wss://bitcoin.grey.pw:50004',
 }
 
 const NETWORK_MEMPOOL_DEFAULTS: Record<NetworkName, string> = {

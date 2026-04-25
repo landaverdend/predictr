@@ -20,6 +20,6 @@ export const BITCOIN_NETWORK_NAME: NetworkName =
 export const BITCOIN_NETWORK: Network =
   NETWORKS[BITCOIN_NETWORK_NAME]
 
-export const DEFAULT_ELECTRUM_URL = 'wss://electrum.blockstream.info:50004'
+export const DEFAULT_ELECTRUM_URL = 'wss://bitcoin.grey.pw:50004'
 
 export const DEFAULT_RELAY = 'wss://relay.damus.io'
