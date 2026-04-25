@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useLang } from '../context/LangContext'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../db'
 import { deriveKeys, HD_KEY_COUNT } from '../lib/hdwallet'
@@ -37,6 +38,7 @@ async function initWallet() {
 type PinState = 'checking' | 'setup' | 'locked' | 'unlocked'
 
 export default function WalletPage() {
+  const { t } = useLang()
   const [pinState, setPinState] = useState<PinState>('checking')
   const [mnemonic, setMnemonic] = useState<string | null>(null)
   const [showImport, setShowImport] = useState(false)
@@ -173,9 +175,7 @@ export default function WalletPage() {
       {/* Disclaimer */}
       <div className="flex items-start gap-2.5 bg-caution/5 border border-caution/20 rounded-xl px-4 py-3.5">
         <span className="text-caution mt-0.5 shrink-0 leading-none">⚠</span>
-        <p className="text-xs text-caution/80 leading-relaxed">
-          This is a hot wallet running in your browser. Do not keep large amounts of funds here — use it only for contract stakes and small amounts.
-        </p>
+        <p className="text-xs text-caution/80 leading-relaxed">{t('disclaimer.hot_wallet')}</p>
       </div>
 
       {/* Tabs */}

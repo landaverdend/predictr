@@ -23,6 +23,7 @@ export type MarketStats = {
 
 export type Offer = {
   id: string        // d-tag
+  eventId: string   // nostr event id (sha256)
   makerPubkey: string
   side: 'YES' | 'NO'
   makerStake: number
@@ -77,6 +78,7 @@ export function computeStats(offers: Offer[]): MarketStats {
 export function parseOffer(event: NostrEvent): Offer {
   return {
     id: tag(event, 'd'),
+    eventId: event.id,
     makerPubkey: event.pubkey,
     side: tag(event, 'side') as 'YES' | 'NO',
     makerStake: parseInt(tag(event, 'maker_stake'), 10),

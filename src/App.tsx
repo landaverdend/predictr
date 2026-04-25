@@ -22,6 +22,7 @@ import SettingsPage from './pages/SettingsPage'
 import AboutPage from './pages/AboutPage'
 import UserPage from './pages/UserPage'
 import MarketPage from './pages/MarketPage'
+import OfferPage from './pages/OfferPage'
 
 function AppShell() {
   const contracts = useLiveQuery(() => db.contracts.toArray()) ?? []
@@ -42,6 +43,7 @@ function AppShell() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/user/:pubkey" element={<UserPage />} />
           <Route path="/markets/:marketId" element={<MarketPage />} />
+          <Route path="/offer/:pubkey/:dTag" element={<OfferPage />} />
         </Routes>
       </div>
     </div>

@@ -136,6 +136,10 @@ const en = {
   'contract.claim_refund': 'claim refund',
   'contract.refunding': 'broadcasting…',
 
+  // ── disclaimers ───────────────────────────────────────────────────────────────
+  'disclaimer.experimental': 'This app is experimental and under active development. Expect bugs, broken flows, and unfinished features. Don\'t stake more than you\'re comfortable losing.',
+  'disclaimer.hot_wallet': 'This is a hot wallet running in your browser. Do not keep large amounts of funds here — use it only for contract stakes and small amounts.',
+
   // ── wallet page ───────────────────────────────────────────────────────────────
   'wallet.title': 'wallet',
   'wallet.secure_title': 'secure your wallet',
@@ -313,6 +317,10 @@ const es: Record<keyof typeof en, string> = {
   'contract.spendable_after': 'disponible después del bloque',
   'contract.claim_refund': 'reclamar reembolso',
   'contract.refunding': 'transmitiendo…',
+
+  // ── disclaimers ───────────────────────────────────────────────────────────────
+  'disclaimer.experimental': 'Esta app es experimental y está en desarrollo activo. Espera errores y funciones incompletas. No apuestes más de lo que estás dispuesto a perder.',
+  'disclaimer.hot_wallet': 'Esta es una billetera caliente en tu navegador. No guardes grandes cantidades aquí — úsala solo para apuestas pequeñas.',
 
   // ── wallet page ───────────────────────────────────────────────────────────────
   'wallet.title': 'billetera',

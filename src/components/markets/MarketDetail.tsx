@@ -17,6 +17,34 @@ function formatSats(n: number): string {
   return n.toLocaleString()
 }
 
+function CopyShareButton({ offer }: { offer: Offer }) {
+  const [copied, setCopied] = useState(false)
+  function handleCopy(e: React.MouseEvent) {
+    e.stopPropagation()
+    const url = `${window.location.origin}/offer/${offer.makerPubkey}/${offer.id}`
+    navigator.clipboard.writeText(url)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return (
+    <button
+      onClick={handleCopy}
+      title="copy offer link"
+      className={`shrink-0 transition-colors ${copied ? 'text-positive' : 'text-ink/20 hover:text-ink/50'}`}
+    >
+      {copied ? (
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        </svg>
+      ) : (
+        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+      )}
+    </button>
+  )
+}
+
 function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProfile | undefined; onTake: () => void }) {
   const navigate = useNavigate()
   const { t } = useLang()
@@ -52,6 +80,7 @@ function OfferRow({ offer, profile, onTake }: { offer: Offer; profile: NostrProf
       {/* Time + action */}
       <div className="flex items-center gap-3 shrink-0 text-xs text-ink/30">
         <span className="hidden sm:block">{timeAgo(offer.createdAt)}</span>
+        <CopyShareButton offer={offer} />
         {offer.status === 'filled' ? (
           <span className="text-ink/20 px-3 py-1.5">{t('detail.offer_filled')}</span>
         ) : (
