@@ -36,13 +36,14 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
   const isClosed = isResolved || isPastDeadline
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onSelect}
-      className="text-left border border-ink/10 rounded-lg overflow-hidden hover:border-ink/25 transition-colors"
+      onKeyDown={e => (e.key === 'Enter' || e.key === ' ') && onSelect()}
+      className="text-left border border-ink/10 rounded-lg overflow-hidden hover:border-ink/25 transition-colors cursor-pointer"
     >
-      <div className="relative">
-        <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} />
-      </div>
+      <ImagePlaceholder imageUrl={market.imageUrl} question={market.question} />
       <div className="p-5 space-y-4">
         <div className="flex items-start gap-2">
           <p className="text-sm font-medium leading-snug flex-1">{market.question}</p>
@@ -62,7 +63,7 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
           <Avatar pubkey={market.pubkey} size="sm" />
           <span className="text-xs text-ink/30 font-mono">{truncate(market.pubkey)}</span>
         </button>
-        <div className="pt-1 border-t border-ink/5 space-y-2">
+        <div className="pt-1 border-t border-ink/5 space-y-3">
           <div className="flex items-center justify-between text-xs text-ink/30">
             <div className="flex items-center gap-2">
               {stats.filledCount > 0 && (
@@ -70,14 +71,14 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
               )}
               <span>{stats.openCount} {t('card.open')}</span>
             </div>
-            <ResolutionPill resolutionBlock={market.resolutionBlockheight} currentBlock={blockHeight} />
           </div>
+          <ResolutionPill resolutionBlock={market.resolutionBlockheight} currentBlock={blockHeight} />
           {(stats.yesVolume > 0 || stats.noVolume > 0) && (() => {
             const total = stats.yesVolume + stats.noVolume
             const yesPct = Math.round(stats.yesVolume / total * 100)
             const noPct = 100 - yesPct
             return (
-              <div className="space-y-1">
+              <div className="space-y-1 mt-2">
                 <div className="flex h-1.5 rounded-full overflow-hidden">
                   <div className="bg-positive/60" style={{ width: `${yesPct}%` }} />
                   <div className="bg-negative/60 flex-1" />
@@ -91,7 +92,7 @@ function MarketCard({ market, offers, resolution, blockHeight, onSelect }: {
           })()}
         </div>
       </div>
-    </button>
+    </div>
   )
 }
 

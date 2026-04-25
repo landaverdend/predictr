@@ -1,12 +1,13 @@
 export function ImagePlaceholder({ imageUrl, question }: { imageUrl?: string; question: string }) {
   if (imageUrl) {
-    return <img src={imageUrl} alt={question} className="w-full h-40 object-cover rounded-t-lg" />
+    return <img src={imageUrl} alt={question} className="w-full h-40 object-cover block" />
   }
   return (
-    <div className="w-full h-40 bg-ink/5 rounded-t-lg flex items-center justify-center">
-      <svg className="w-8 h-8 text-ink/10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-          d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5M4.5 3h15A1.5 1.5 0 0121 4.5v15a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 4.5v-15A1.5 1.5 0 014.5 3z" />
+    <div className="w-full h-40 bg-gradient-to-br from-brand-dim/60 via-ink/5 to-ink/10 flex items-center justify-center">
+      <svg className="w-7 h-7 text-ink/15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.25} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <circle cx="8.5" cy="8.5" r="1.5" />
+        <path d="M21 15l-5-5L5 21" />
       </svg>
     </div>
   )
