@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNostrUser } from '../hooks/useNostrUser'
 import { useRelayContext } from '../context/RelayContext'
-import { useElectrumContext, DEFAULT_ELECTRUM_URL } from '../context/ElectrumContext'
-import { DEFAULT_RELAY, BITCOIN_NETWORK_NAME } from '../lib/config'
+import { useElectrumContext } from '../context/ElectrumContext'
+import { DEFAULT_RELAY, BITCOIN_NETWORK_NAME, NETWORK_STORAGE_KEY, VALID_NETWORKS, type NetworkName } from '../lib/config'
 import { db } from '../db'
 import {
   getNostr,
@@ -400,6 +400,95 @@ function ElectrumManager() {
   )
 }
 
+const NETWORK_LABELS: Record<NetworkName, string> = {
+  regtest: 'regtest',
+  testnet: 'testnet4',
+  signet:  'signet',
+  mainnet: 'mainnet',
+}
+
+// Default Electrum WS URL per network — kept in sync with ElectrumManager
+const NETWORK_ELECTRUM_DEFAULTS: Record<NetworkName, string> = {
+  regtest: 'ws://nigiri.kratom.io:5050/electrum',
+  testnet: 'wss://blackie.c3-soft.com:50004',
+  signet:  '',
+  mainnet: 'wss://electrum.blockstream.info:50004',
+}
+
+const NETWORK_MEMPOOL_DEFAULTS: Record<NetworkName, string> = {
+  mainnet: 'https://mempool.space/api',
+  testnet: 'https://mempool.space/testnet4/api',
+  signet:  'https://mempool.space/signet/api',
+  regtest: '',
+}
+
+function NetworkSwitcher() {
+  const [selected, setSelected] = useState<NetworkName>(BITCOIN_NETWORK_NAME)
+  const [switching, setSwitching] = useState(false)
+
+  const isDirty = selected !== BITCOIN_NETWORK_NAME
+
+  async function handleSwitch() {
+    if (!isDirty) return
+    const confirmed = confirm(
+      `Switch to ${NETWORK_LABELS[selected]}?\n\nYour wallet addresses will be re-derived for the new network. Cached UTXOs and transaction history will be cleared. Open contracts will remain but may reference the wrong network.`
+    )
+    if (!confirmed) { setSelected(BITCOIN_NETWORK_NAME); return }
+
+    setSwitching(true)
+
+    // Save new network
+    localStorage.setItem(NETWORK_STORAGE_KEY, selected)
+
+    // Update Electrum URL to the new network's default (prefer WS, fall back to mempool)
+    const newElectrum = NETWORK_ELECTRUM_DEFAULTS[selected] || NETWORK_MEMPOOL_DEFAULTS[selected]
+    if (newElectrum) await db.settings.put({ key: 'electrum_url', value: newElectrum })
+
+    // Clear network-specific wallet data
+    await db.wallet.clear()
+    await db.transactions.clear()
+
+    window.location.reload()
+  }
+
+  return (
+    <div className="p-5 space-y-4">
+      <div className="flex flex-wrap gap-2">
+        {VALID_NETWORKS.map(net => (
+          <button
+            key={net}
+            onClick={() => setSelected(net)}
+            className={`px-4 py-2 rounded-lg text-sm border transition-colors ${
+              selected === net
+                ? 'border-brand bg-brand/10 text-brand'
+                : 'border-ink/10 text-ink/40 hover:text-ink/70 hover:border-ink/25'
+            }`}
+          >
+            {NETWORK_LABELS[net]}
+            {net === BITCOIN_NETWORK_NAME && selected !== net && (
+              <span className="ml-1.5 text-[10px] text-ink/30">(current)</span>
+            )}
+          </button>
+        ))}
+      </div>
+      {isDirty && (
+        <p className="text-xs text-caution/80">
+          Switching networks will re-derive wallet addresses and clear cached UTXOs.
+        </p>
+      )}
+      <div className="flex justify-end pt-1 border-t border-ink/5">
+        <button
+          onClick={handleSwitch}
+          disabled={!isDirty || switching}
+          className="px-5 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand-light disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+        >
+          {switching ? 'switching…' : 'switch network'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function SettingsPage() {
   const user = useNostrUser()
 
@@ -473,6 +562,15 @@ export default function SettingsPage() {
           <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">bitcoin backend</p>
         </div>
         <ElectrumManager />
+      </section>
+
+      {/* Network */}
+      <section className="border border-ink/10 rounded-xl overflow-hidden">
+        <div className="px-5 py-3 bg-elevated border-b border-ink/5 flex items-center justify-between">
+          <p className="text-xs text-ink/40 uppercase tracking-wider font-medium">bitcoin network</p>
+          <span className="text-[10px] font-mono text-ink/30 bg-ink/5 px-2 py-0.5 rounded">{BITCOIN_NETWORK_NAME}</span>
+        </div>
+        <NetworkSwitcher />
       </section>
 
       {/* Data */}

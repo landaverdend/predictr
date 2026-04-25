@@ -10,7 +10,11 @@ import { useLang } from '../../context/LangContext'
 /** Compact pill shown on the card — just the relative time, hover for more */
 function ResolutionPill({ resolutionBlock, currentBlock }: { resolutionBlock: number; currentBlock: number | null }) {
   const info = projectedResolution(resolutionBlock, currentBlock)
-  if (!info) return <span className="font-mono text-ink/25">block {resolutionBlock.toLocaleString()}</span>
+  if (!info) return (
+    <span className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-ink/8 border border-ink/10 text-ink/40 whitespace-nowrap">
+      block {resolutionBlock.toLocaleString()}
+    </span>
+  )
   return (
     <span
       className="font-mono text-[10px] px-2 py-0.5 rounded-full bg-ink/8 border border-ink/10 text-ink/40 whitespace-nowrap"

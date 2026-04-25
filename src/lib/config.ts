@@ -7,14 +7,19 @@ const NETWORKS: Record<string, Network> = {
   mainnet: { bech32: 'bc',   pubKeyHash: 0x00, scriptHash: 0x05, wif: 0x80 },
 }
 
-export const BITCOIN_NETWORK_NAME: string =
-  import.meta.env.VITE_BITCOIN_NETWORK ?? 'regtest'
+export const NETWORK_STORAGE_KEY = 'bitcoin_network'
+export const VALID_NETWORKS = ['regtest', 'testnet', 'signet', 'mainnet'] as const
+export type NetworkName = typeof VALID_NETWORKS[number]
+
+const _stored = localStorage.getItem(NETWORK_STORAGE_KEY)
+
+export const BITCOIN_NETWORK_NAME: NetworkName =
+  (VALID_NETWORKS.includes(_stored as NetworkName) ? _stored as NetworkName : null) ??
+  'regtest'
 
 export const BITCOIN_NETWORK: Network =
-  NETWORKS[BITCOIN_NETWORK_NAME] ?? NETWORKS.regtest
+  NETWORKS[BITCOIN_NETWORK_NAME]
 
-export const DEFAULT_ELECTRUM_URL: string =
-  import.meta.env.VITE_ELECTRUM_URL ?? 'ws://nigiri.kratom.io:5050/electrum'
+export const DEFAULT_ELECTRUM_URL = 'wss://electrum.blockstream.info:50004'
 
-export const DEFAULT_RELAY: string =
-  import.meta.env.VITE_DEFAULT_RELAY ?? 'ws://kratomstr.io:7777'
+export const DEFAULT_RELAY = 'wss://relay.damus.io'
