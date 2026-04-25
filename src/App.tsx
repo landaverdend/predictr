@@ -19,6 +19,7 @@ import OraclePage from './pages/OraclePage'
 import InboxPage from './pages/InboxPage'
 import WalletPage from './pages/WalletPage'
 import SettingsPage from './pages/SettingsPage'
+import AboutPage from './pages/AboutPage'
 import UserPage from './pages/UserPage'
 import MarketPage from './pages/MarketPage'
 
@@ -38,6 +39,7 @@ function AppShell() {
           <Route path="/contracts" element={<InboxPage />} />
           <Route path="/wallet" element={<WalletPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/user/:pubkey" element={<UserPage />} />
           <Route path="/markets/:marketId" element={<MarketPage />} />
         </Routes>

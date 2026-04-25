@@ -102,6 +102,12 @@ function UserMenu() {
               {t('nav.settings')}
             </button>
             <button
+              onClick={() => { setOpen(false); navigate('/about') }}
+              className="w-full text-left px-4 py-2.5 text-sm text-ink/60 hover:bg-ink/5 transition-colors"
+            >
+              {lang === 'es' ? 'acerca de' : 'about'}
+            </button>
+            <button
               onClick={handleClearData}
               className="w-full text-left px-4 py-2.5 text-sm text-negative hover:bg-negative/5 transition-colors"
             >
@@ -166,8 +172,19 @@ export default function Navbar() {
           ))}
         </nav>
 
-        {/* Right: status dot + user */}
+        {/* Right: about + status dot + user */}
         <div className="flex items-center gap-3">
+          <NavLink
+            to="/about"
+            className={({ isActive }) =>
+              `hidden sm:flex items-center justify-center w-6 h-6 rounded-full transition-colors ${isActive ? 'text-ink/70 bg-ink/10' : 'text-ink/25 hover:text-ink/60'}`
+            }
+            aria-label="About"
+          >
+            <svg className="w-3.5 h-3.5" viewBox="0 0 16 16" fill="currentColor">
+              <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 3a.75.75 0 1 1 0 1.5A.75.75 0 0 1 8 4zm-.25 3h1.5v4.5h-1.5V7z"/>
+            </svg>
+          </NavLink>
           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_COLOR[status]}`} />
           <UserMenu />
         </div>
