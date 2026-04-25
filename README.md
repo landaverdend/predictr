@@ -13,13 +13,15 @@ No backend. All state is local (IndexedDB via Dexie) plus a Nostr relay.
 ### Oracle
 Creates a market by publishing a Kind 8050 event committing to two SHA256 hashes — one for each outcome. The preimages are kept secret and stored locally. At resolution, the oracle publishes a Kind 8052 event revealing the winning preimage.
 
-> **Note:** For simplicity, oracles here are single-key - one party controls both preimages and can unilaterally determine the outcome. Multisig oracles could be supported (requiring M-of-N independent parties to cooperate on a resolution) and would be a natural extension to prevent a single oracle from tampering with or manipulating outcomes.
+> **Note:** Oracles here are single-key — one party controls both preimages and can unilaterally determine the outcome. Multisig oracles (requiring M-of-N independent parties to cooperate on resolution) would be a natural extension to prevent a single oracle from manipulating outcomes.
 
 ### Maker
-Takes a side (YES or NO) on a market and stakes sats. Publishes a Kind 30051 offer event. When a taker responds, the maker constructs the funding PSBT, signs their own input with `SIGHASH_ALL|ANYONECANPAY`, and sends it to the taker via encrypted DM.
+Takes a side (YES or NO) on a market and stakes sats. Publishes a Kind 30051 standing offer event. When a taker responds, the maker reviews the take request, constructs the funding PSBT, signs their input with `SIGHASH_ALL|ANYONECANPAY`, and sends it to the taker via encrypted DM.
+
+A standing offer remains open until the maker explicitly closes it. The maker can accept multiple takers against the same offer — each acceptance creates an independent deal contract while the standing offer stays open for additional takers.
 
 ### Taker
-Finds an open offer, validates the funding PSBT, adds and signs their own input, and broadcasts the fully-signed transaction. Makers listen and update accordingly when the transaction has reached the mempool. 
+Finds an open offer, sends a `take_request` DM to the maker, waits for the funding PSBT, validates it, adds and signs their own input, and broadcasts the fully-signed transaction. After broadcasting, publishes a Kind 30053 fill receipt with the txid and both wallet pubkeys so anyone can verify the contract on-chain.
 
 ---
 
@@ -58,30 +60,39 @@ Outputs:
   [3] taker change (optional)
 ```
 
-Fee: 1000 sats per party, hardcoded.
+Fees are dynamic: fetched from `blockchain.estimatefee 2` (Electrum) or `/api/v1/fees/recommended` (mempool), falling back to 1 sat/vbyte for regtest.
 
 ---
 
 ## Contract Lifecycle
 
+**Maker — two separate local records:**
 ```
-Maker:  offer_pending → take_received → psbt_sent → funded → resolved | refunded
-Taker:  awaiting_psbt              → psbt_sent → funded → resolved | refunded
+Standing offer:  offer_pending ─────────────────────────────→ closed
+Deal contract:   psbt_sent → funded → resolved | refunded
 ```
 
-- `offer_pending` — maker published offer, waiting for a taker DM
-- `take_received` — maker received a `take_request`, needs to send PSBT
-- `psbt_sent` — maker sent PSBT; taker received PSBT and needs to sign
-- `awaiting_psbt` — taker sent `take_request`, waiting for maker PSBT
-- `funded` — taker broadcast the tx; maker detects funding by polling the contract output address via Electrum
-- `resolved` — oracle published Kind 8052 with winning preimage; winner can claim
-- `refunded` — CLTV timelock expired; party reclaimed their output
+**Taker:**
+```
+awaiting_psbt → psbt_received → funded → resolved | refunded
+```
+
+When the maker accepts a taker, a new **deal contract** is created with a random ID and an `offerId` back-reference to the standing offer. The standing offer stays `offer_pending` so more takers can fill it. The maker closes the standing offer manually when done.
+
+The contracts page shows four tabs:
+
+| Tab | Contents |
+|-----|---------|
+| **standing** | Open maker offers — close button available |
+| **taken** | Active negotiations (PSBT exchange in progress) |
+| **funded** | On-chain confirmed contracts |
+| **settled** | Resolved, refunded, or closed — resolved rows show claimed/unclaimed status |
 
 ---
 
 ## Messaging Protocol
 
-All DMs are **Kind 14** events encrypted with **NIP-44** (XChaCha20-Poly1305). Each DM is tagged with the offer's Nostr event ID (`e` tag) to correlate with the local contract record.
+All DMs are **Kind 14** events encrypted with **NIP-44** (XChaCha20-Poly1305). Each DM is tagged with the offer a-tag (`30051:makerPubkey:offerId`) to correlate with the local contract record.
 
 ### `take_request` (taker → maker)
 ```json
@@ -111,10 +122,27 @@ All DMs are **Kind 14** events encrypted with **NIP-44** (XChaCha20-Poly1305). E
 |-------|------|---------|
 | 8050  | Regular (immutable) | Market announcement — oracle commits to yes/no hashes |
 | 8052  | Regular (immutable) | Resolution — oracle reveals winning preimage and outcome |
-| 30051 | Parameterized replaceable | Offer — maker's stake, side, confidence; replaced with `status=filled` once funded |
+| 30051 | Parameterized replaceable | Standing offer — maker's stake, side, confidence; status `open` or `closed` (never `filled`) |
+| 30053 | Parameterized replaceable | Fill receipt — taker posts after broadcast; d-tag is the funding txid |
 | 14    | Ephemeral | Encrypted DM (NIP-44) — `take_request` / `psbt_offer` |
 
 Kinds 8050 and 8052 are non-replaceable to prevent retroactive manipulation of market terms or outcomes.
+
+Kind 30051 is **never** marked filled on-chain. Proof of funding lives in Kind 30053, which includes both wallet pubkeys so the DLC script can be reconstructed and the txid verified on-chain by anyone.
+
+### Fill receipt (Kind 30053) tags
+
+| Tag | Value |
+|-----|-------|
+| `d` | funding txid |
+| `a` | `30051:makerPubkey:offerId` |
+| `m` | marketId |
+| `funding_txid` | funding txid (explicit) |
+| `side` | maker's side (`YES` \| `NO`) |
+| `maker_wallet_pubkey` | x-only hex |
+| `taker_wallet_pubkey` | x-only hex |
+| `maker_stake` | sats |
+| `taker_stake` | sats |
 
 ---
 
