@@ -11,7 +11,7 @@ No backend. All state is local (IndexedDB via Dexie) plus a Nostr relay.
 ## Roles
 
 ### Oracle
-Creates a market by publishing a Kind 8050 event committing to two SHA256 hashes — one for each outcome. The preimages are kept secret and stored locally. At resolution, the oracle publishes a Kind 8052 event revealing the winning preimage.
+Creates a market by publishing a Kind 30050 event committing to two SHA256 hashes — one for each outcome. The preimages are kept secret and stored locally. At resolution, the oracle publishes a Kind 30052 event revealing the winning preimage. Market descriptions support Markdown and are rendered on the market detail page.
 
 > **Note:** Oracles here are single-key — one party controls both preimages and can unilaterally determine the outcome. Multisig oracles (requiring M-of-N independent parties to cooperate on resolution) would be a natural extension to prevent a single oracle from manipulating outcomes.
 
@@ -120,15 +120,13 @@ All DMs are **Kind 14** events encrypted with **NIP-44** (XChaCha20-Poly1305). E
 
 | Kind  | Type | Purpose |
 |-------|------|---------|
-| 8050  | Regular (immutable) | Market announcement — oracle commits to yes/no hashes |
-| 8052  | Regular (immutable) | Resolution — oracle reveals winning preimage and outcome |
+| 30050 | Parameterized replaceable | Market announcement — oracle commits to yes/no hashes |
 | 30051 | Parameterized replaceable | Standing offer — maker's stake, side, confidence; status `open` or `closed` (never `filled`) |
+| 30052 | Parameterized replaceable | Resolution — oracle reveals winning preimage and outcome |
 | 30053 | Parameterized replaceable | Fill receipt — taker posts after broadcast; d-tag is the funding txid |
 | 14    | Ephemeral | Encrypted DM (NIP-44) — `take_request` / `psbt_offer` |
 
-Kinds 8050 and 8052 are non-replaceable to prevent retroactive manipulation of market terms or outcomes.
-
-Kind 30051 is **never** marked filled on-chain. Proof of funding lives in Kind 30053, which includes both wallet pubkeys so the DLC script can be reconstructed and the txid verified on-chain by anyone.
+Kind 30051 is **never** marked filled on-chain. Proof of funding lives in Kind 30053, which includes both wallet pubkeys so the contract output scripts can be reconstructed and the txid verified on-chain by anyone.
 
 ### Fill receipt (Kind 30053) tags
 
