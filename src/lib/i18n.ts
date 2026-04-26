@@ -151,6 +151,22 @@ const en = {
   'contract.close_offer': 'close offer',
   'contract.closing': 'closing…',
 
+  // ── offer page ───────────────────────────────────────────────────────────────
+  'offer.back': '← back',
+  'offer.label_market': 'market',
+  'offer.label_offer': 'offer',
+  'offer.label_side': 'side',
+  'offer.label_stake': 'stake',
+  'offer.label_conf': 'conf',
+  'offer.filled_badge': 'filled',
+  'offer.requires_staking': 'taking this offer requires staking',
+  'offer.take': 'take this offer',
+  'offer.has_been_filled': 'this offer has been filled',
+  'offer.past_deadline': 'market past deadline',
+  'offer.loading_market': 'loading market…',
+  'offer.view_full_market': 'view full market →',
+  'offer.not_found': 'offer not found',
+
   // ── disclaimers ───────────────────────────────────────────────────────────────
   'disclaimer.experimental': 'This app is experimental and under active development. Expect bugs, broken flows, and unfinished features. Don\'t stake more than you\'re comfortable losing.',
   'disclaimer.hot_wallet': 'This is a hot wallet running in your browser. Do not keep large amounts of funds here — use it only for contract stakes and small amounts.',
@@ -347,6 +363,22 @@ const es: Record<keyof typeof en, string> = {
   'contract.refunding': 'transmitiendo…',
   'contract.close_offer': 'cerrar oferta',
   'contract.closing': 'cerrando…',
+
+  // ── offer page ───────────────────────────────────────────────────────────────
+  'offer.back': '← volver',
+  'offer.label_market': 'mercado',
+  'offer.label_offer': 'oferta',
+  'offer.label_side': 'lado',
+  'offer.label_stake': 'apuesta',
+  'offer.label_conf': 'conf',
+  'offer.filled_badge': 'completada',
+  'offer.requires_staking': 'tomar esta oferta requiere apostar',
+  'offer.take': 'tomar esta oferta',
+  'offer.has_been_filled': 'esta oferta ya fue tomada',
+  'offer.past_deadline': 'mercado fuera de plazo',
+  'offer.loading_market': 'cargando mercado…',
+  'offer.view_full_market': 'ver mercado completo →',
+  'offer.not_found': 'oferta no encontrada',
 
   // ── disclaimers ───────────────────────────────────────────────────────────────
   'disclaimer.experimental': 'Esta app es experimental y está en desarrollo activo. Espera errores y funciones incompletas. No apuestes más de lo que estás dispuesto a perder.',

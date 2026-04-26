@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import type { NostrEvent } from 'nostr-tools'
 import { useRelayContext } from '../context/RelayContext'
 import { useElectrumContext } from '../context/ElectrumContext'
+import { useLang } from '../context/LangContext'
 import { parseMarket, parseOffer, tag } from '../lib/market'
 import type { Market, Offer } from '../lib/market'
 import { takerStake, truncate } from '../lib/market'
@@ -23,6 +24,7 @@ export default function OfferPage() {
   const [taking, setTaking] = useState(false)
   const [notFound, setNotFound] = useState(false)
 
+  const { t } = useLang()
   const profiles = useProfiles(offer ? [offer.makerPubkey] : [])
   const makerProfile = offer ? profiles.get(offer.makerPubkey) : undefined
 
@@ -68,9 +70,9 @@ export default function OfferPage() {
     return (
       <main className="flex-1 px-6 py-10 max-w-xl mx-auto w-full">
         <button onClick={() => navigate('/')} className="flex items-center gap-2 text-sm text-ink/40 hover:text-ink/70 transition-colors mb-8">
-          <span>←</span> back
+          {t('offer.back')}
         </button>
-        <div className="text-center text-ink/30 text-sm py-24">offer not found</div>
+        <div className="text-center text-ink/30 text-sm py-24">{t('offer.not_found')}</div>
       </main>
     )
   }
@@ -104,7 +106,7 @@ export default function OfferPage() {
   return (
     <main className="flex-1 px-4 sm:px-6 py-6 sm:py-10 max-w-xl mx-auto w-full space-y-4 sm:space-y-6">
       <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-sm text-ink/40 hover:text-ink/70 transition-colors">
-        <span>←</span> back
+        {t('offer.back')}
       </button>
 
       {/* Market context */}
@@ -113,7 +115,7 @@ export default function OfferPage() {
           to={`/markets/${market.id}`}
           className="block border border-ink/10 rounded-xl px-5 py-4 hover:border-ink/25 transition-colors"
         >
-          <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">market</p>
+          <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('offer.label_market')}</p>
           <p className="text-sm font-medium leading-snug">{market.question}</p>
           {blockHeight !== null && (
             <div className="mt-2">
@@ -136,9 +138,9 @@ export default function OfferPage() {
       {/* Offer card */}
       <div className="border border-ink/10 rounded-xl p-4 sm:p-6 space-y-4 sm:space-y-5">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] uppercase tracking-wider text-ink/30">offer</p>
+          <p className="text-[10px] uppercase tracking-wider text-ink/30">{t('offer.label_offer')}</p>
           {isFilled && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-ink/10 text-ink/40">filled</span>
+            <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-ink/10 text-ink/40">{t('offer.filled_badge')}</span>
           )}
         </div>
 
@@ -157,24 +159,24 @@ export default function OfferPage() {
         {/* Bet details */}
         <div className="grid grid-cols-3 gap-3 text-center">
           <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
-            <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">side</p>
+            <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('offer.label_side')}</p>
             <p className={`text-lg font-mono font-semibold ${offer.side === 'YES' ? 'text-positive' : 'text-negative'}`}>
               {offer.side}
             </p>
           </div>
           <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
-            <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">stake</p>
+            <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('offer.label_stake')}</p>
             <p className="text-lg font-mono font-semibold">{offer.makerStake.toLocaleString()}</p>
             <p className="text-[10px] text-ink/30 mt-0.5">sats</p>
           </div>
           <div className="bg-ink/5 border border-ink/8 rounded-xl px-3 py-3.5">
-            <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">conf</p>
+            <p className="text-[10px] uppercase tracking-wider text-ink/30 mb-1.5">{t('offer.label_conf')}</p>
             <p className="text-lg font-mono font-semibold">{offer.confidence}%</p>
           </div>
         </div>
 
         <div className="text-xs text-ink/30 text-center">
-          taking this offer requires staking <span className="font-mono text-ink/60">{tStake.toLocaleString()} sats</span>
+          {t('offer.requires_staking')} <span className="font-mono text-ink/60">{tStake.toLocaleString()} sats</span>
         </div>
 
         {/* Action */}
@@ -183,19 +185,19 @@ export default function OfferPage() {
             onClick={() => setTaking(true)}
             className="w-full py-3 rounded-xl text-sm font-bold bg-brand/15 text-brand border border-brand/30 hover:bg-brand/25 transition-colors"
           >
-            take this offer
+            {t('offer.take')}
           </button>
         ) : isFilled ? (
           <div className="w-full py-3 rounded-xl text-sm text-center text-ink/30 bg-ink/5 border border-ink/8">
-            this offer has been filled
+            {t('offer.has_been_filled')}
           </div>
         ) : isPastDeadline ? (
           <div className="w-full py-3 rounded-xl text-sm text-center text-ink/30 bg-ink/5 border border-ink/8">
-            market past deadline
+            {t('offer.past_deadline')}
           </div>
         ) : (
           <div className="w-full py-3 rounded-xl text-sm text-center text-ink/20 bg-ink/3 border border-ink/5 animate-pulse">
-            loading market…
+            {t('offer.loading_market')}
           </div>
         )}
 
@@ -204,7 +206,7 @@ export default function OfferPage() {
             to={`/markets/${market.id}`}
             className="block text-center text-xs text-ink/30 hover:text-ink/60 transition-colors"
           >
-            view full market →
+            {t('offer.view_full_market')}
           </Link>
         )}
       </div>
