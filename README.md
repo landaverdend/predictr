@@ -8,6 +8,63 @@ No backend. All state is local (IndexedDB via Dexie) plus a Nostr relay.
 
 ---
 
+## Running locally
+
+```bash
+npm install
+npm run dev        # Vite dev server at http://localhost:5173
+npm run build      # tsc + vite build
+npm run preview    # preview the production build
+```
+
+**Requirements:**
+- A Nostr browser extension with NIP-44 support — [Alby](https://getalby.com) or [nos2x](https://github.com/fiatjaf/nos2x)
+- An Electrum server (WebSocket) or internet access for mempool.space fee estimation
+- Bitcoin Core in regtest mode (or signet/testnet) if you want to test funding and settlement
+
+---
+
+## Setup walkthrough
+
+### 1. Configure relay
+Go to **Settings** and set your Nostr relay (default: `wss://relay.damus.io`). All parties must share at least one relay.
+
+### 2. Set up wallet
+Go to **Wallet**, generate or import a BIP39 seed phrase, and set a PIN to encrypt your keys. The app derives P2TR addresses from this seed for contract inputs and outputs.
+
+### 3. Fund the wallet (regtest)
+Send sats to one of your wallet addresses. In regtest:
+```bash
+bitcoin-cli -regtest sendtoaddress <your_bcrt1_address> 0.001
+bitcoin-cli -regtest generatetoaddress 1 <any_address>
+```
+
+### 4. Create a market (oracle)
+Go to **Oracle → Create**. Fill in the question, optional markdown description, and the resolution blockheight. The app generates two random 32-byte preimages, hashes them, and publishes the hashes to Nostr. Keep this browser tab — the preimages are stored locally.
+
+### 5. Post an offer (maker)
+Go to **Markets**, find a market, click it, and hit **Place Bet**. Choose your side (YES/NO), stake amount, and confidence. This publishes a Kind 30051 event to the relay.
+
+### 6. Take an offer (taker)
+Find an open offer on a market page, click **Take**. Enter your UTXO details (or the wallet auto-fills from your balance). This sends an encrypted `take_request` DM to the maker.
+
+### 7. Accept the take (maker)
+Go to **Contracts → Standing**. You'll see the incoming take request. Review and click **Accept** to build and sign the funding PSBT, then send it back to the taker.
+
+### 8. Broadcast (taker)
+Go to **Contracts → Taken**. The PSBT arrives. Click **Sign & Broadcast** to co-sign and submit the transaction. A fill receipt (Kind 30053) is posted to Nostr.
+
+### 9. Resolve (oracle)
+After the resolution blockheight, go to **Oracle → My Markets** and click **Resolve**. Choose the outcome and publish the winning preimage.
+
+### 10. Claim winnings (winner)
+Go to **Contracts → Funded**. The app detects the revealed preimage and shows a **Claim** button. Clicking it sweeps both contract outputs to your wallet.
+
+### 11. Refund (if no resolution)
+After `resolutionBlockheight + 144` blocks with no oracle reveal, go to **Contracts → Funded** and click **Claim Refund** to spend your own output via the CLTV leaf.
+
+---
+
 ## Roles
 
 ### Oracle
